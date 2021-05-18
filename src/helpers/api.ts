@@ -1,38 +1,58 @@
-import axios, { AxiosInstance } from "axios";
-import { IAssetData, IGasPrices, IParsedTx } from "./types";
+import algosdk from "algosdk";
+import { IAssetData } from "./types";
 
-const api: AxiosInstance = axios.create({
-  baseURL: "https://ethereum-api.xyz",
-  timeout: 30000, // 30 secs
-  headers: {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  },
-});
+const client = new algosdk.Algodv2("", "https://algoexplorerapi.io", "");
 
-export async function apiGetAccountAssets(address: string, chainId: number): Promise<IAssetData[]> {
-  const response = await api.get(`/account-assets?address=${address}&chainId=${chainId}`);
-  const { result } = response.data;
-  return result;
+export async function apiGetAccountAssets(address: string): Promise<IAssetData[]> {
+  const accountInfo = await client
+    .accountInformation(address)
+    .setIntDecoding(algosdk.IntDecoding.BIGINT)
+    .do();
+
+  const algoBalance = accountInfo.amount as bigint;
+  const assetsFromRes: Array<{
+    "asset-id": bigint;
+    amount: bigint;
+    creator: string;
+    frozen: boolean;
+  }> = accountInfo.assets;
+
+  const assets: IAssetData[] = assetsFromRes.map(({ "asset-id": id, amount, creator, frozen }) => ({
+    id: Number(id),
+    amount,
+    creator,
+    frozen,
+    decimals: 0,
+  }));
+
+  assets.sort((a, b) => a.id - b.id);
+
+  await Promise.all(
+    assets.map(async asset => {
+      const { params } = await client.getAssetByID(asset.id).do();
+      asset.name = params.name;
+      asset.unitName = params["unit-name"];
+      asset.url = params.url;
+      asset.decimals = params.decimals;
+    }),
+  );
+
+  assets.unshift({
+    id: 0,
+    amount: algoBalance,
+    creator: "",
+    frozen: false,
+    decimals: 6,
+    name: "Algo",
+    unitName: "Algo",
+  });
+
+  return assets;
 }
 
-export async function apiGetAccountTransactions(
-  address: string,
-  chainId: number,
-): Promise<IParsedTx[]> {
-  const response = await api.get(`/account-transactions?address=${address}&chainId=${chainId}`);
-  const { result } = response.data;
-  return result;
+export async function apiGetTxnParams(): Promise<algosdk.SuggestedParams> {
+  const params = await client.getTransactionParams().do();
+  return params;
 }
 
-export const apiGetAccountNonce = async (address: string, chainId: number): Promise<string> => {
-  const response = await api.get(`/account-nonce?address=${address}&chainId=${chainId}`);
-  const { result } = response.data;
-  return result;
-};
-
-export const apiGetGasPrices = async (): Promise<IGasPrices> => {
-  const response = await api.get(`/gas-prices`);
-  const { result } = response.data;
-  return result;
-};
+// export async function sendTransaction(txn: )

@@ -1,9 +1,12 @@
 export interface IAssetData {
-  symbol: string;
-  name: string;
-  decimals: string;
-  contractAddress: string;
-  balance?: string;
+  id: number;
+  amount: bigint;
+  creator: string;
+  frozen: boolean;
+  decimals: number;
+  name?: string;
+  unitName?: string;
+  url?: string;
 }
 
 export interface IChainData {

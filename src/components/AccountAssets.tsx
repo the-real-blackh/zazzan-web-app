@@ -3,48 +3,26 @@ import Column from "./Column";
 import AssetRow from "./AssetRow";
 import { IAssetData } from "../helpers/types";
 
-const AccountAssets = (props: any) => {
-  const { assets, chainId } = props;
-  const defaultNativeCurrency: IAssetData =
-    chainId === 100
-      ? {
-          contractAddress: "",
-          symbol: "xDAI",
-          name: "xDAI",
-          decimals: "18",
-          balance: "0",
-        }
-      : {
-          contractAddress: "",
-          name: "Ethereum",
-          symbol: "ETH",
-          decimals: "18",
-          balance: "0",
-        };
+const AccountAssets = (props: { assets: IAssetData[] }) => {
+  const { assets } = props;
 
-  let nativeCurrency: IAssetData = defaultNativeCurrency;
-  let tokens: IAssetData[] = [];
-  if (assets && assets.length) {
-    const filteredNativeCurrency = assets.filter((asset: IAssetData) =>
-      asset && asset.symbol
-        ? asset.symbol.toLowerCase() === nativeCurrency.symbol.toLowerCase()
-        : false,
-    );
-    nativeCurrency =
-      filteredNativeCurrency && filteredNativeCurrency.length
-        ? filteredNativeCurrency[0]
-        : defaultNativeCurrency;
-    tokens = assets.filter((asset: IAssetData) =>
-      asset && asset.symbol
-        ? asset.symbol.toLowerCase() !== nativeCurrency.symbol.toLowerCase()
-        : false,
-    );
-  }
+  const nativeCurrency = assets.find((asset: IAssetData) => asset && asset.id === 0) || {
+    id: 0,
+    amount: BigInt(0),
+    creator: "",
+    frozen: false,
+    decimals: 6,
+    name: "Algo",
+    unitName: "Algo",
+  };
+
+  const tokens = assets.filter((asset: IAssetData) => asset && asset.id !== 0);
+
   return (
     <Column center>
-      <AssetRow key={nativeCurrency.name} asset={nativeCurrency} />
+      <AssetRow key={nativeCurrency.id} asset={nativeCurrency} />
       {tokens.map(token => (
-        <AssetRow key={token.symbol} asset={token} />
+        <AssetRow key={token.id} asset={token} />
       ))}
     </Column>
   );

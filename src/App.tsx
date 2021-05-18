@@ -2,8 +2,9 @@ import * as React from "react";
 import styled from "styled-components";
 import WalletConnect from "@walletconnect/client";
 import QRCodeModal from "@walletconnect/qrcode-modal";
-import { convertUtf8ToHex } from "@walletconnect/utils";
 import { IInternalEvent } from "@walletconnect/types";
+import { formatJsonRpcRequest } from "@json-rpc-tools/utils";
+import algosdk from "algosdk";
 import Button from "./components/Button";
 import Column from "./components/Column";
 import Wrapper from "./components/Wrapper";
@@ -11,18 +12,10 @@ import Modal from "./components/Modal";
 import Header from "./components/Header";
 import Loader from "./components/Loader";
 import { fonts } from "./styles";
-import { apiGetAccountAssets, apiGetGasPrices, apiGetAccountNonce } from "./helpers/api";
-import {
-  sanitizeHex,
-  verifySignature,
-  hashTypedDataMessage,
-  hashPersonalMessage,
-} from "./helpers/utilities";
-import { convertAmountToRawNumber, convertStringToHex } from "./helpers/bignumber";
+import { apiGetAccountAssets, apiGetTxnParams } from "./helpers/api";
 import { IAssetData } from "./helpers/types";
 import Banner from "./components/Banner";
 import AccountAssets from "./components/AccountAssets";
-import { eip712 } from "./helpers/eip712";
 
 const SLayout = styled.div`
   position: relative;
@@ -131,7 +124,6 @@ interface IAppState {
   connector: WalletConnect | null;
   fetching: boolean;
   connected: boolean;
-  chainId: number;
   showModal: boolean;
   pendingRequest: boolean;
   uri: string;
@@ -145,7 +137,6 @@ const INITIAL_STATE: IAppState = {
   connector: null,
   fetching: false,
   connected: false,
-  chainId: 1,
   showModal: false,
   pendingRequest: false,
   uri: "",
@@ -192,8 +183,8 @@ class App extends React.Component<any, any> {
         throw error;
       }
 
-      const { chainId, accounts } = payload.params[0];
-      this.onSessionUpdate(accounts, chainId);
+      const { accounts } = payload.params[0];
+      this.onSessionUpdate(accounts);
     });
 
     connector.on("connect", (error, payload) => {
@@ -217,15 +208,14 @@ class App extends React.Component<any, any> {
     });
 
     if (connector.connected) {
-      const { chainId, accounts } = connector;
+      const { accounts } = connector;
       const address = accounts[0];
       this.setState({
         connected: true,
-        chainId,
         accounts,
         address,
       });
-      this.onSessionUpdate(accounts, chainId);
+      this.onSessionUpdate(accounts);
     }
 
     this.setState({ connector });
@@ -244,11 +234,10 @@ class App extends React.Component<any, any> {
   };
 
   public onConnect = async (payload: IInternalEvent) => {
-    const { chainId, accounts } = payload.params[0];
+    const { accounts } = payload.params[0];
     const address = accounts[0];
     await this.setState({
       connected: true,
-      chainId,
       accounts,
       address,
     });
@@ -259,18 +248,18 @@ class App extends React.Component<any, any> {
     this.resetApp();
   };
 
-  public onSessionUpdate = async (accounts: string[], chainId: number) => {
+  public onSessionUpdate = async (accounts: string[]) => {
     const address = accounts[0];
-    await this.setState({ chainId, accounts, address });
+    await this.setState({ accounts, address });
     await this.getAccountAssets();
   };
 
   public getAccountAssets = async () => {
-    const { address, chainId } = this.state;
+    const { address } = this.state;
     this.setState({ fetching: true });
     try {
       // get account balances
-      const assets = await apiGetAccountAssets(address, chainId);
+      const assets = await apiGetAccountAssets(address);
 
       await this.setState({ fetching: false, address, assets });
     } catch (error) {
@@ -281,49 +270,14 @@ class App extends React.Component<any, any> {
 
   public toggleModal = () => this.setState({ showModal: !this.state.showModal });
 
-  public testSendTransaction = async () => {
-    const { connector, address, chainId } = this.state;
+  public doSignTxn = async (
+    txnsToSign: Array<{ txn: algosdk.Transaction; shouldSign: boolean }>,
+  ) => {
+    const { connector } = this.state;
 
     if (!connector) {
       return;
     }
-
-    // from
-    const from = address;
-
-    // to
-    const to = address;
-
-    // nonce
-    const _nonce = await apiGetAccountNonce(address, chainId);
-    const nonce = sanitizeHex(convertStringToHex(_nonce));
-
-    // gasPrice
-    const gasPrices = await apiGetGasPrices();
-    const _gasPrice = gasPrices.slow.price;
-    const gasPrice = sanitizeHex(convertStringToHex(convertAmountToRawNumber(_gasPrice, 9)));
-
-    // gasLimit
-    const _gasLimit = 21000;
-    const gasLimit = sanitizeHex(convertStringToHex(_gasLimit));
-
-    // value
-    const _value = 0;
-    const value = sanitizeHex(convertStringToHex(_value));
-
-    // data
-    const data = "0x";
-
-    // test transaction
-    const tx = {
-      from,
-      to,
-      nonce,
-      gasPrice,
-      gasLimit,
-      value,
-      data,
-    };
 
     try {
       // open modal
@@ -332,16 +286,52 @@ class App extends React.Component<any, any> {
       // toggle pending request indicator
       this.setState({ pendingRequest: true });
 
-      // send transaction
-      const result = await connector.sendTransaction(tx);
+      const requestParams = txnsToSign.map(({ txn, shouldSign }) => ({
+        txn: Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString("base64"),
+        shouldSign,
+      }));
+
+      // sign transaction
+      const request = formatJsonRpcRequest("algo_signTxn", requestParams);
+      const result: Array<string | null> = await connector.sendCustomRequest(request);
+
+      const signedTxnInfo: Array<{
+        txID: string;
+        signingAddress?: string;
+        signature: string;
+      } | null> = result.map((r, i) => {
+        if (r == null) {
+          if (txnsToSign[i].shouldSign === false) {
+            return null;
+          }
+          throw new Error(`Signed txn that should not have been signed at index ${i}`);
+        }
+
+        const rawSignedTxn = Buffer.from(r, "base64");
+        const signedTxn = algosdk.decodeSignedTransaction(rawSignedTxn);
+        const txn = (signedTxn.txn as unknown) as algosdk.Transaction;
+        const txID = txn.txID();
+        const unsignedTxID = txnsToSign[i].txn.txID();
+
+        if (txID !== unsignedTxID) {
+          throw new Error(
+            `Signed transaction at index ${i} differs from unsigned transaction. Got ${txID}, expected ${unsignedTxID}`,
+          );
+        }
+
+        return {
+          txID,
+          signingAddress: signedTxn.sgnr ? algosdk.encodeAddress(signedTxn.sgnr) : undefined,
+          signature: Buffer.from(signedTxn.sig).toString("base64"),
+        };
+      });
+
+      console.log("Signed txn info:", signedTxnInfo);
 
       // format displayed result
       const formattedResult = {
-        method: "eth_sendTransaction",
-        txHash: result,
-        from: address,
-        to: address,
-        value: "0 ETH",
+        method: "algo_signTxn",
+        result: signedTxnInfo,
       };
 
       // display result
@@ -356,122 +346,105 @@ class App extends React.Component<any, any> {
     }
   };
 
-  public testSignPersonalMessage = async () => {
-    const { connector, address, chainId } = this.state;
+  public testSignSingleTxn = async () => {
+    const { address } = this.state;
 
-    if (!connector) {
-      return;
-    }
+    const suggestedParams = await apiGetTxnParams();
 
-    // test message
-    const message = "My email is john@doe.com - 1537836206101";
+    const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      from: address,
+      to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+      amount: 100000,
+      note: new Uint8Array(Buffer.from("this is a single payment txn")),
+      suggestedParams,
+    });
 
-    // encode message (hex)
-    const hexMsg = convertUtf8ToHex(message);
+    const txnsToSign = [{ txn, shouldSign: true }];
 
-    // personal_sign params
-    const msgParams = [hexMsg, address];
-
-    try {
-      // open modal
-      this.toggleModal();
-
-      // toggle pending request indicator
-      this.setState({ pendingRequest: true });
-
-      // send message
-      const result = await connector.signPersonalMessage(msgParams);
-
-      // verify signature
-      const hash = hashPersonalMessage(message);
-      const valid = await verifySignature(address, result, hash, chainId);
-
-      // format displayed result
-      const formattedResult = {
-        method: "personal_sign",
-        address,
-        valid,
-        result,
-      };
-
-      // display result
-      this.setState({
-        connector,
-        pendingRequest: false,
-        result: formattedResult || null,
-      });
-    } catch (error) {
-      console.error(error);
-      this.setState({ connector, pendingRequest: false, result: null });
-    }
+    await this.doSignTxn(txnsToSign);
   };
 
-  public testSignTypedData = async () => {
-    const { connector, address, chainId } = this.state;
+  public testSign1OfGroupTxn = async () => {
+    const { address } = this.state;
 
-    if (!connector) {
-      return;
-    }
+    const suggestedParams = await apiGetTxnParams();
 
-    const message = JSON.stringify(eip712.example);
+    const assetIndex = 100;
 
-    // eth_signTypedData params
-    const msgParams = [address, message];
+    const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: address,
+      to: address,
+      assetIndex,
+      amount: 0,
+      note: new Uint8Array(Buffer.from("this is an opt-in txn")),
+      suggestedParams,
+    });
 
-    try {
-      // open modal
-      this.toggleModal();
+    const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+      to: address,
+      assetIndex,
+      amount: 1000000,
+      note: new Uint8Array(Buffer.from("this is an asset receive txn")),
+      suggestedParams,
+    });
 
-      // toggle pending request indicator
-      this.setState({ pendingRequest: true });
+    const txnsToSign = [
+      { txn: txn1, shouldSign: true },
+      { txn: txn2, shouldSign: false },
+    ];
 
-      // sign typed data
-      const result = await connector.signTypedData(msgParams);
+    await this.doSignTxn(txnsToSign);
+  };
 
-      // verify signature
-      const hash = hashTypedDataMessage(message);
-      const valid = await verifySignature(address, result, hash, chainId);
+  public testSign2OfGroupTxn = async () => {
+    const { address } = this.state;
 
-      // format displayed result
-      const formattedResult = {
-        method: "eth_signTypedData",
-        address,
-        valid,
-        result,
-      };
+    const suggestedParams = await apiGetTxnParams();
 
-      // display result
-      this.setState({
-        connector,
-        pendingRequest: false,
-        result: formattedResult || null,
-      });
-    } catch (error) {
-      console.error(error);
-      this.setState({ connector, pendingRequest: false, result: null });
-    }
+    const assetIndex = 100;
+
+    const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: address,
+      to: address,
+      assetIndex,
+      amount: 0,
+      note: new Uint8Array(Buffer.from("this is an opt-in txn")),
+      suggestedParams,
+    });
+
+    const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+      to: address,
+      assetIndex,
+      amount: 1000000,
+      note: new Uint8Array(Buffer.from("this is an asset receive txn")),
+      suggestedParams,
+    });
+
+    const txn3 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      from: address,
+      to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+      amount: 500000,
+      note: new Uint8Array(Buffer.from("this is a payment txn")),
+      suggestedParams,
+    });
+
+    const txnsToSign = [
+      { txn: txn1, shouldSign: true },
+      { txn: txn2, shouldSign: false },
+      { txn: txn3, shouldSign: true },
+    ];
+
+    await this.doSignTxn(txnsToSign);
   };
 
   public render = () => {
-    const {
-      assets,
-      address,
-      connected,
-      chainId,
-      fetching,
-      showModal,
-      pendingRequest,
-      result,
-    } = this.state;
+    const { assets, address, connected, fetching, showModal, pendingRequest, result } = this.state;
     return (
       <SLayout>
         <Column maxWidth={1000} spanHeight>
-          <Header
-            connected={connected}
-            address={address}
-            chainId={chainId}
-            killSession={this.killSession}
-          />
+          <Header connected={connected} address={address} killSession={this.killSession} />
           <SContent>
             {!address && !assets.length ? (
               <SLanding center>
@@ -492,22 +465,20 @@ class App extends React.Component<any, any> {
                 <h3>Actions</h3>
                 <Column center>
                   <STestButtonContainer>
-                    <STestButton left onClick={this.testSendTransaction}>
-                      {"eth_sendTransaction"}
+                    <STestButton left onClick={this.testSignSingleTxn}>
+                      {"Sign a single txn"}
                     </STestButton>
-
-                    <STestButton left onClick={this.testSignPersonalMessage}>
-                      {"personal_sign"}
+                    <STestButton left onClick={this.testSign1OfGroupTxn}>
+                      {"Sign 1 txn from a group"}
                     </STestButton>
-
-                    <STestButton left onClick={this.testSignTypedData}>
-                      {"eth_signTypedData"}
+                    <STestButton left onClick={this.testSign2OfGroupTxn}>
+                      {"Sign 2 txns from a group"}
                     </STestButton>
                   </STestButtonContainer>
                 </Column>
                 <h3>Balances</h3>
                 {!fetching ? (
-                  <AccountAssets chainId={chainId} assets={assets} />
+                  <AccountAssets assets={assets} />
                 ) : (
                   <Column center>
                     <SContainer>
@@ -535,7 +506,7 @@ class App extends React.Component<any, any> {
                 {Object.keys(result).map(key => (
                   <SRow key={key}>
                     <SKey>{key}</SKey>
-                    <SValue>{result[key].toString()}</SValue>
+                    <SValue>{JSON.stringify(result[key])}</SValue>
                   </SRow>
                 ))}
               </STable>

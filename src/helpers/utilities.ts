@@ -1,11 +1,3 @@
-import { providers } from "ethers";
-import { convertUtf8ToHex } from "@walletconnect/utils";
-import { TypedDataUtils } from "eth-sig-util";
-import * as ethUtil from "ethereumjs-util";
-import { IChainData } from "./types";
-import { SUPPORTED_CHAINS } from "./chains";
-import { eip1271 } from "./eip1271";
-
 export function capitalize(string: string): string {
   return string
     .split(" ")
@@ -36,7 +28,7 @@ export function ellipseText(text = "", maxLength = 9999): string {
   return result;
 }
 
-export function ellipseAddress(address = "", width = 10): string {
+export function ellipseAddress(address = "", width = 6): string {
   return `${address.slice(0, width)}...${address.slice(-width)}`;
 }
 
@@ -101,97 +93,10 @@ export function isMobile(): boolean {
   return mobile;
 }
 
-export function getChainData(chainId: number): IChainData {
-  const chainData = SUPPORTED_CHAINS.filter((chain: any) => chain.chain_id === chainId)[0];
+export function formatBigNumWithDecimals(num: bigint, decimals: number): string {
+  const singleUnit = BigInt("1" + "0".repeat(decimals));
+  const wholeUnits = num / singleUnit;
+  const fractionalUnits = num % singleUnit;
 
-  if (!chainData) {
-    throw new Error("ChainId missing or not supported");
-  }
-
-  const API_KEY = process.env.REACT_APP_INFURA_PROJECT_ID;
-
-  if (
-    chainData.rpc_url.includes("infura.io") &&
-    chainData.rpc_url.includes("%API_KEY%") &&
-    API_KEY
-  ) {
-    const rpcUrl = chainData.rpc_url.replace("%API_KEY%", API_KEY);
-
-    return {
-      ...chainData,
-      rpc_url: rpcUrl,
-    };
-  }
-
-  return chainData;
-}
-
-export function encodePersonalMessage(msg: string): string {
-  const data = ethUtil.toBuffer(convertUtf8ToHex(msg));
-  const buf = Buffer.concat([
-    Buffer.from("\u0019Ethereum Signed Message:\n" + data.length.toString(), "utf8"),
-    data,
-  ]);
-  return ethUtil.bufferToHex(buf);
-}
-
-export function hashPersonalMessage(msg: string): string {
-  const data = encodePersonalMessage(msg);
-  const buf = ethUtil.toBuffer(data);
-  const hash = ethUtil.keccak256(buf);
-  return ethUtil.bufferToHex(hash);
-}
-
-export function encodeTypedDataMessage(msg: string): string {
-  const useV4 = true;
-  const data = TypedDataUtils.sanitizeData(JSON.parse(msg));
-  const buf = Buffer.concat([
-    Buffer.from("1901", "hex"),
-    TypedDataUtils.hashStruct("EIP712Domain", data.domain, data.types, useV4),
-    TypedDataUtils.hashStruct(data.primaryType as string, data.message, data.types, useV4),
-  ]);
-  return ethUtil.bufferToHex(buf);
-}
-
-export function hashTypedDataMessage(msg: string): string {
-  const data = encodeTypedDataMessage(msg);
-  const buf = ethUtil.toBuffer(data);
-  const hash = ethUtil.keccak256(buf);
-  return ethUtil.bufferToHex(hash);
-}
-
-export function recoverAddress(sig: string, hash: string): string {
-  const params = ethUtil.fromRpcSig(sig);
-  const result = ethUtil.ecrecover(ethUtil.toBuffer(hash), params.v, params.r, params.s);
-  const signer = ethUtil.bufferToHex(ethUtil.publicToAddress(result));
-  return signer;
-}
-
-export function recoverPersonalSignature(sig: string, msg: string): string {
-  const hash = hashPersonalMessage(msg);
-  const signer = recoverAddress(sig, hash);
-  return signer;
-}
-
-export function recoverTypedMessage(sig: string, msg: string): string {
-  const hash = hashTypedDataMessage(msg);
-  const signer = recoverAddress(sig, hash);
-  return signer;
-}
-
-export async function verifySignature(
-  address: string,
-  sig: string,
-  hash: string,
-  chainId: number,
-): Promise<boolean> {
-  const rpcUrl = getChainData(chainId).rpc_url;
-  const provider = new providers.JsonRpcProvider(rpcUrl);
-  const bytecode = await provider.getCode(address);
-  if (!bytecode || bytecode === "0x" || bytecode === "0x0" || bytecode === "0x00") {
-    const signer = recoverAddress(sig, hash);
-    return signer.toLowerCase() === address.toLowerCase();
-  } else {
-    return eip1271.isValidSignature(address, sig, hash, provider);
-  }
+  return wholeUnits.toString() + "." + fractionalUnits.toString().padStart(decimals, "0");
 }
