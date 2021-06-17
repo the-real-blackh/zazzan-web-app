@@ -12,10 +12,11 @@ import Modal from "./components/Modal";
 import Header from "./components/Header";
 import Loader from "./components/Loader";
 import { fonts } from "./styles";
-import { apiGetAccountAssets, apiGetTxnParams } from "./helpers/api";
+import { apiGetAccountAssets } from "./helpers/api";
 import { IAssetData } from "./helpers/types";
 import Banner from "./components/Banner";
 import AccountAssets from "./components/AccountAssets";
+import { Scenario, scenarios } from "./scenarios";
 
 const SLayout = styled.div`
   position: relative;
@@ -270,16 +271,16 @@ class App extends React.Component<any, any> {
 
   public toggleModal = () => this.setState({ showModal: !this.state.showModal });
 
-  public doSignTxn = async (
-    txnsToSign: Array<{ txn: algosdk.Transaction; shouldSign: boolean }>,
-  ) => {
-    const { connector } = this.state;
+  public signTxnScenario = async (scenario: Scenario) => {
+    const { connector, address } = this.state;
 
     if (!connector) {
       return;
     }
 
     try {
+      const txnsToSign = await scenario(address);
+
       // open modal
       this.toggleModal();
 
@@ -346,99 +347,6 @@ class App extends React.Component<any, any> {
     }
   };
 
-  public testSignSingleTxn = async () => {
-    const { address } = this.state;
-
-    const suggestedParams = await apiGetTxnParams();
-
-    const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      from: address,
-      to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
-      amount: 100000,
-      note: new Uint8Array(Buffer.from("this is a single payment txn")),
-      suggestedParams,
-    });
-
-    const txnsToSign = [{ txn, shouldSign: true }];
-
-    await this.doSignTxn(txnsToSign);
-  };
-
-  public testSign1OfGroupTxn = async () => {
-    const { address } = this.state;
-
-    const suggestedParams = await apiGetTxnParams();
-
-    const assetIndex = 100;
-
-    const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      from: address,
-      to: address,
-      assetIndex,
-      amount: 0,
-      note: new Uint8Array(Buffer.from("this is an opt-in txn")),
-      suggestedParams,
-    });
-
-    const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      from: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
-      to: address,
-      assetIndex,
-      amount: 1000000,
-      note: new Uint8Array(Buffer.from("this is an asset receive txn")),
-      suggestedParams,
-    });
-
-    const txnsToSign = [
-      { txn: txn1, shouldSign: true },
-      { txn: txn2, shouldSign: false },
-    ];
-
-    await this.doSignTxn(txnsToSign);
-  };
-
-  public testSign2OfGroupTxn = async () => {
-    const { address } = this.state;
-
-    const suggestedParams = await apiGetTxnParams();
-
-    const assetIndex = 100;
-
-    const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      from: address,
-      to: address,
-      assetIndex,
-      amount: 0,
-      note: new Uint8Array(Buffer.from("this is an opt-in txn")),
-      suggestedParams,
-    });
-
-    const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      from: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
-      to: address,
-      assetIndex,
-      amount: 1000000,
-      note: new Uint8Array(Buffer.from("this is an asset receive txn")),
-      suggestedParams,
-    });
-
-    const txn3 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      from: address,
-      to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
-      amount: 500000,
-      note: new Uint8Array(Buffer.from("this is a payment txn")),
-      suggestedParams,
-    });
-
-    const txnsToSign = [
-      { txn: txn1, shouldSign: true },
-      { txn: txn2, shouldSign: false },
-      { txn: txn3, shouldSign: true },
-    ];
-
-    await this.doSignTxn(txnsToSign);
-  };
-
   public render = () => {
     const { assets, address, connected, fetching, showModal, pendingRequest, result } = this.state;
     return (
@@ -465,15 +373,11 @@ class App extends React.Component<any, any> {
                 <h3>Actions</h3>
                 <Column center>
                   <STestButtonContainer>
-                    <STestButton left onClick={this.testSignSingleTxn}>
-                      {"Sign a single txn"}
-                    </STestButton>
-                    <STestButton left onClick={this.testSign1OfGroupTxn}>
-                      {"Sign 1 txn from a group"}
-                    </STestButton>
-                    <STestButton left onClick={this.testSign2OfGroupTxn}>
-                      {"Sign 2 txns from a group"}
-                    </STestButton>
+                    {scenarios.map(({ name, scenario }) => (
+                      <STestButton left key={name} onClick={() => this.signTxnScenario(scenario)}>
+                        {name}
+                      </STestButton>
+                    ))}
                   </STestButtonContainer>
                 </Column>
                 <h3>Balances</h3>
