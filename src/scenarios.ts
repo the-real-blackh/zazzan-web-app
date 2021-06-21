@@ -3,7 +3,7 @@ import { apiGetTxnParams } from "./helpers/api";
 
 export type Scenario = (
   address: string,
-) => Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>>;
+) => Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean; authAddr?: string }>>;
 
 const signSingleTxn: Scenario = async (
   address: string,
@@ -97,7 +97,7 @@ const sign2FromGroupTxn: Scenario = async (
   return txnsToSign;
 };
 
-export const scenarios: Array<{ name: string, scenario: Scenario }> = [
+export const scenarios: Array<{ name: string; scenario: Scenario }> = [
   {
     name: "Sign a single txn",
     scenario: signSingleTxn,

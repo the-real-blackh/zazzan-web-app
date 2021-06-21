@@ -13,7 +13,7 @@ import Header from "./components/Header";
 import Loader from "./components/Loader";
 import { fonts } from "./styles";
 import { apiGetAccountAssets } from "./helpers/api";
-import { IAssetData } from "./helpers/types";
+import { IAssetData, WalletTransaction, SignTxnParams } from "./helpers/types";
 import Banner from "./components/Banner";
 import AccountAssets from "./components/AccountAssets";
 import { Scenario, scenarios } from "./scenarios";
@@ -287,12 +287,14 @@ class App extends React.Component<any, any> {
       // toggle pending request indicator
       this.setState({ pendingRequest: true });
 
-      const requestParams = txnsToSign.map(({ txn, shouldSign }) => ({
+      const walletTxns: WalletTransaction[] = txnsToSign.map(({ txn, shouldSign, authAddr }) => ({
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString("base64"),
-        shouldSign,
+        signers: shouldSign ? undefined : [], // TODO: put auth addr in signers array
+        authAddr,
       }));
 
       // sign transaction
+      const requestParams: SignTxnParams = [walletTxns];
       const request = formatJsonRpcRequest("algo_signTxn", requestParams);
       const result: Array<string | null> = await connector.sendCustomRequest(request);
 
