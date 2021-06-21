@@ -13,7 +13,7 @@ import Header from "./components/Header";
 import Loader from "./components/Loader";
 import { fonts } from "./styles";
 import { apiGetAccountAssets } from "./helpers/api";
-import { IAssetData, WalletTransaction, SignTxnParams } from "./helpers/types";
+import { IAssetData, IWalletTransaction, SignTxnParams } from "./helpers/types";
 import Banner from "./components/Banner";
 import AccountAssets from "./components/AccountAssets";
 import { Scenario, scenarios } from "./scenarios";
@@ -287,7 +287,7 @@ class App extends React.Component<any, any> {
       // toggle pending request indicator
       this.setState({ pendingRequest: true });
 
-      const walletTxns: WalletTransaction[] = txnsToSign.map(({ txn, shouldSign, authAddr }) => ({
+      const walletTxns: IWalletTransaction[] = txnsToSign.map(({ txn, shouldSign, authAddr }) => ({
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString("base64"),
         signers: shouldSign ? undefined : [], // TODO: put auth addr in signers array
         authAddr,

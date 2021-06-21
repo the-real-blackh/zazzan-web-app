@@ -137,7 +137,7 @@ export interface IMethod {
 /**
  * Options for creating and using a multisignature account.
  */
-export interface MultisigMetadata {
+export interface IMultisigMetadata {
   /**
    * Multisig version.
    */
@@ -156,7 +156,7 @@ export interface MultisigMetadata {
   addrs: string[];
 }
 
-export interface WalletTransaction {
+export interface IWalletTransaction {
   /**
    * Base64 encoding of the canonical msgpack encoding of a     
    * Transaction.
@@ -172,7 +172,7 @@ export interface WalletTransaction {
   /**
    * Optional multisig metadata used to sign the transaction
    */
-  msig?: MultisigMetadata;
+  msig?: IMultisigMetadata;
  
   /**
    * Optional list of addresses that must sign the transactions
@@ -185,7 +185,7 @@ export interface WalletTransaction {
   message?: string;
 }
  
-export interface SignTxnOpts {
+export interface ISignTxnOpts {
   /**
    * Optional message explaining the reason of the group of 
    * transactions.
@@ -195,6 +195,6 @@ export interface SignTxnOpts {
   // other options may be present, but are not standard
 }
 
-export type SignTxnParams = [WalletTransaction[], SignTxnOpts?];
+export type SignTxnParams = [IWalletTransaction[], ISignTxnOpts?];
 
 /* eslint-enable */
