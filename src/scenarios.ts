@@ -5,7 +5,7 @@ export type Scenario = (
   address: string,
 ) => Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean; authAddr?: string }>>;
 
-const signSinglePayTxn: Scenario = async (
+const singlePayTxn: Scenario = async (
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
   const suggestedParams = await apiGetTxnParams();
@@ -22,7 +22,7 @@ const signSinglePayTxn: Scenario = async (
   return txnsToSign;
 };
 
-const signSinglePayTxnWithClose: Scenario = async (
+const singlePayTxnWithClose: Scenario = async (
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
   const suggestedParams = await apiGetTxnParams();
@@ -40,7 +40,7 @@ const signSinglePayTxnWithClose: Scenario = async (
   return txnsToSign;
 };
 
-const signSinglePayTxnWithRekey: Scenario = async (
+const singlePayTxnWithRekey: Scenario = async (
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
   const suggestedParams = await apiGetTxnParams();
@@ -58,7 +58,7 @@ const signSinglePayTxnWithRekey: Scenario = async (
   return txnsToSign;
 };
 
-const signSinglePayTxnWithRekeyAndClose: Scenario = async (
+const singlePayTxnWithRekeyAndClose: Scenario = async (
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
   const suggestedParams = await apiGetTxnParams();
@@ -77,7 +77,7 @@ const signSinglePayTxnWithRekeyAndClose: Scenario = async (
   return txnsToSign;
 };
 
-const singleSingleAssetOptInTxn: Scenario = async (
+const singleAssetOptInTxn: Scenario = async (
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
   const suggestedParams = await apiGetTxnParams();
@@ -97,7 +97,7 @@ const singleSingleAssetOptInTxn: Scenario = async (
   return txnsToSign;
 };
 
-const singleSingleAssetTransferTxn: Scenario = async (
+const singleAssetTransferTxn: Scenario = async (
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
   const suggestedParams = await apiGetTxnParams();
@@ -117,7 +117,7 @@ const singleSingleAssetTransferTxn: Scenario = async (
   return txnsToSign;
 };
 
-const singleSingleAssetTransferTxnWithClose: Scenario = async (
+const singleAssetTransferTxnWithClose: Scenario = async (
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
   const suggestedParams = await apiGetTxnParams();
@@ -131,6 +131,83 @@ const singleSingleAssetTransferTxnWithClose: Scenario = async (
     assetIndex,
     note: new Uint8Array(Buffer.from("example note value")),
     closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn, shouldSign: true }];
+  return txnsToSign;
+};
+
+const singleAppOptIn: Scenario = async (
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams();
+
+  const appIndex = 200;
+
+  const txn = algosdk.makeApplicationOptInTxnFromObject({
+    from: address,
+    appIndex,
+    note: new Uint8Array(Buffer.from("example note value")),
+    appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn, shouldSign: true }];
+  return txnsToSign;
+};
+
+const singleAppCall: Scenario = async (
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams();
+
+  const appIndex = 200;
+
+  const txn = algosdk.makeApplicationNoOpTxnFromObject({
+    from: address,
+    appIndex,
+    note: new Uint8Array(Buffer.from("example note value")),
+    appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn, shouldSign: true }];
+  return txnsToSign;
+};
+
+const singleAppCallWithRekey: Scenario = async (
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams();
+
+  const appIndex = 200;
+
+  const txn = algosdk.makeApplicationNoOpTxnFromObject({
+    from: address,
+    appIndex,
+    note: new Uint8Array(Buffer.from("example note value")),
+    appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
+    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn, shouldSign: true }];
+  return txnsToSign;
+};
+
+const singleAppCloseOut: Scenario = async (
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams();
+
+  const appIndex = 200;
+
+  const txn = algosdk.makeApplicationCloseOutTxnFromObject({
+    from: address,
+    appIndex,
+    note: new Uint8Array(Buffer.from("example note value")),
+    appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
     suggestedParams,
   });
 
@@ -167,6 +244,8 @@ const sign1FromGroupTxn: Scenario = async (
     { txn: txn1, shouldSign: true },
     { txn: txn2, shouldSign: false },
   ];
+
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -210,6 +289,170 @@ const sign2FromGroupTxn: Scenario = async (
     { txn: txn3, shouldSign: true },
   ];
 
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+
+  return txnsToSign;
+};
+
+const signGroupWithPayOptinTransfer: Scenario = async (
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams();
+
+  const assetIndex = 100;
+
+  const txn1 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    amount: 500000,
+    note: new Uint8Array(Buffer.from("example note value")),
+    suggestedParams,
+  });
+
+  const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: address,
+    assetIndex,
+    amount: 0,
+    note: new Uint8Array(Buffer.from("example note value")),
+    suggestedParams,
+  });
+
+  const txn3 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    assetIndex,
+    amount: 1000000,
+    note: new Uint8Array(Buffer.from("example note value")),
+    suggestedParams,
+  });
+
+  const txnsToSign = [
+    { txn: txn1, shouldSign: true },
+    { txn: txn2, shouldSign: true },
+    { txn: txn3, shouldSign: true },
+  ];
+
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+
+  return txnsToSign;
+};
+
+const signGroupWithPayRekey: Scenario = async (
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams();
+
+  const txn1 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    amount: 500000,
+    note: new Uint8Array(Buffer.from("example note value")),
+    suggestedParams,
+  });
+
+  const txn2 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    amount: 500000,
+    note: new Uint8Array(Buffer.from("example note value")),
+    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    suggestedParams,
+  });
+
+  const txnsToSign = [
+    { txn: txn1, shouldSign: true },
+    { txn: txn2, shouldSign: true },
+  ];
+
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+
+  return txnsToSign;
+};
+
+const signGroupOf7: Scenario = async (
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams();
+
+  const assetIndex = 100;
+
+  const optIn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: address,
+    amount: 0,
+    assetIndex,
+    note: new Uint8Array(Buffer.from("example note value")),
+    suggestedParams,
+  });
+
+  const assetXfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    assetIndex,
+    amount: 50,
+    note: new Uint8Array(Buffer.from("example note value")),
+    suggestedParams,
+  });
+
+  const assetClose = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    assetIndex,
+    amount: 50,
+    note: new Uint8Array(Buffer.from("example note value")),
+    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    suggestedParams,
+  });
+
+  const payment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    amount: 500000,
+    note: new Uint8Array(Buffer.from("example note value")),
+    suggestedParams,
+  });
+
+  const accountClose = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    amount: 0,
+    note: new Uint8Array(Buffer.from("example note value")),
+    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    suggestedParams,
+  });
+
+  const accountRekey = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    amount: 1000,
+    note: new Uint8Array(Buffer.from("example note value")),
+    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    suggestedParams,
+  });
+
+  const accountRekeyAndClose = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    amount: 50000,
+    note: new Uint8Array(Buffer.from("example note value")),
+    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    suggestedParams,
+  });
+
+  const txnsToSign = [
+    { txn: optIn, shouldSign: true },
+    { txn: assetXfer, shouldSign: true },
+    { txn: assetClose, shouldSign: true },
+    { txn: payment, shouldSign: true },
+    { txn: accountClose, shouldSign: true },
+    { txn: accountRekey, shouldSign: true },
+    { txn: accountRekeyAndClose, shouldSign: true },
+  ];
+
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+
   return txnsToSign;
 };
 
@@ -244,6 +487,8 @@ const signTxnWithAssetClose: Scenario = async (
     { txn: txn2, shouldSign: true },
   ];
 
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+
   return txnsToSign;
 };
 
@@ -277,6 +522,8 @@ const signTxnWithRekey: Scenario = async (
     { txn: txn1, shouldSign: true },
     { txn: txn2, shouldSign: true },
   ];
+
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -335,56 +582,128 @@ const signTxnWithRekeyAndAssetClose: Scenario = async (
     { txn: txn4, shouldSign: true },
   ];
 
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+
+  return txnsToSign;
+};
+
+const fullTxnGroup: Scenario = async (
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams();
+
+  const txnsToSign: Array<{ txn: algosdk.Transaction; shouldSign: boolean }> = [];
+
+  for (let i = 0; i < 8; i++) {
+    const assetIndex = 100 + i;
+
+    const optIn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: address,
+      to: address,
+      amount: 0,
+      assetIndex,
+      note: new Uint8Array(Buffer.from("example note value")),
+      suggestedParams,
+    });
+
+    const closeOut = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: address,
+      to: address,
+      amount: 0,
+      assetIndex,
+      note: new Uint8Array(Buffer.from("example note value")),
+      closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+      suggestedParams,
+    });
+
+    txnsToSign.push({ txn: optIn, shouldSign: true });
+    txnsToSign.push({ txn: closeOut, shouldSign: true });
+  }
+
+  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+
   return txnsToSign;
 };
 
 export const scenarios: Array<{ name: string; scenario: Scenario }> = [
   {
-    name: "Sign single pay txn",
-    scenario: signSinglePayTxn,
+    name: "1. Sign single pay txn",
+    scenario: singlePayTxn,
   },
   {
-    name: "Sign single pay txn with close",
-    scenario: signSinglePayTxnWithClose,
+    name: "2. Sign single pay txn with close",
+    scenario: singlePayTxnWithClose,
   },
   {
-    name: "Sign single pay txn with rekey",
-    scenario: signSinglePayTxnWithRekey,
+    name: "3. Sign single pay txn with rekey",
+    scenario: singlePayTxnWithRekey,
   },
   {
-    name: "Sign single pay txn with rekey and close",
-    scenario: signSinglePayTxnWithRekeyAndClose,
+    name: "4. Sign single pay txn with rekey and close",
+    scenario: singlePayTxnWithRekeyAndClose,
   },
   {
-    name: "Sign single asset opt-in txn",
-    scenario: singleSingleAssetOptInTxn,
+    name: "5. Sign single asset opt-in txn",
+    scenario: singleAssetOptInTxn,
   },
   {
-    name: "Sign single asset transfer txn",
-    scenario: singleSingleAssetTransferTxn,
+    name: "6. Sign single asset transfer txn",
+    scenario: singleAssetTransferTxn,
   },
   {
-    name: "Sign single asset transfer txn with close",
-    scenario: singleSingleAssetTransferTxnWithClose,
+    name: "7. Sign single asset transfer txn with close",
+    scenario: singleAssetTransferTxnWithClose,
   },
   {
-    name: "Sign 1 of 2 txns from a group",
+    name: "8. Sign single app opt-in txn",
+    scenario: singleAppOptIn,
+  },
+  {
+    name: "9. Sign single app call txn",
+    scenario: singleAppCall,
+  },
+  {
+    name: "10. Sign single app call txn with rekey",
+    scenario: singleAppCallWithRekey,
+  },
+  {
+    name: "11. Sign single app close out txn",
+    scenario: singleAppCloseOut,
+  },
+  {
+    name: "12. Sign 1 of 2 txns from a group",
     scenario: sign1FromGroupTxn,
   },
   {
-    name: "Sign 2 of 3 txns from a group",
+    name: "13. Sign 2 of 3 txns from a group",
     scenario: sign2FromGroupTxn,
   },
   {
-    name: "Sign txn group with asset close",
+    name: "14. Sign txn group with pay, asset opt-in, and asset transfer",
+    scenario: signGroupWithPayOptinTransfer,
+  },
+  {
+    name: "15. Sign txn group with pay and rekey",
+    scenario: signGroupWithPayRekey,
+  },
+  {
+    name: "16. Sign txn group with asset close",
     scenario: signTxnWithAssetClose,
   },
   {
-    name: "Sign txn group with rekey",
+    name: "17. Sign txn group with rekey",
     scenario: signTxnWithRekey,
   },
   {
-    name: "Sign txn group with rekey and asset close",
+    name: "18. Sign txn group with rekey and asset close",
     scenario: signTxnWithRekeyAndAssetClose,
+  },
+  {
+    name: "19. Sign group of 7",
+    scenario: signGroupOf7,
+  },
+  {
+    name: "20. Full txn group",
+    scenario: fullTxnGroup,
   },
 ];

@@ -84,7 +84,7 @@ const Header = (props: IHeaderProps) => {
     <SHeader {...props}>
       {connected ? (
         <SActiveChain>
-          <p>{`Connected to Algorand MainNet`}</p>
+          <p>{`Connected to Algorand TestNet`}</p>
         </SActiveChain>
       ) : (
         <Banner />

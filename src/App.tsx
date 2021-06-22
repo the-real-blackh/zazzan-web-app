@@ -115,7 +115,7 @@ const STestButtonContainer = styled.div`
 const STestButton = styled(Button as any)`
   border-radius: 8px;
   font-size: ${fonts.size.medium};
-  height: 44px;
+  height: 64px;
   width: 100%;
   max-width: 175px;
   margin: 12px;
