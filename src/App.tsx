@@ -12,11 +12,11 @@ import Modal from "./components/Modal";
 import Header from "./components/Header";
 import Loader from "./components/Loader";
 import { fonts } from "./styles";
-import { apiGetAccountAssets } from "./helpers/api";
+import { apiGetAccountAssets, apiSubmitTransactions } from "./helpers/api";
 import { IAssetData, IWalletTransaction, SignTxnParams } from "./helpers/types";
 import Banner from "./components/Banner";
 import AccountAssets from "./components/AccountAssets";
-import { Scenario, scenarios } from "./scenarios";
+import { Scenario, scenarios, signTxnWithTestAccount } from "./scenarios";
 
 const SLayout = styled.div`
   position: relative;
@@ -68,6 +68,12 @@ const SModalContainer = styled.div`
 const SModalTitle = styled.div`
   margin: 1em 0;
   font-size: 20px;
+  font-weight: 700;
+`;
+
+const SModalButton = styled.button`
+  margin: 1em 0;
+  font-size: 18px;
   font-weight: 700;
 `;
 
@@ -127,6 +133,9 @@ interface IAppState {
   connected: boolean;
   showModal: boolean;
   pendingRequest: boolean;
+  signedTxns: Uint8Array[] | null;
+  pendingSubmission: boolean | number;
+  pendingSubmissionError: Error | null;
   uri: string;
   accounts: string[];
   address: string;
@@ -140,6 +149,9 @@ const INITIAL_STATE: IAppState = {
   connected: false,
   showModal: false,
   pendingRequest: false,
+  signedTxns: null,
+  pendingSubmission: false,
+  pendingSubmissionError: null,
   uri: "",
   accounts: [],
   address: "",
@@ -269,7 +281,12 @@ class App extends React.Component<any, any> {
     }
   };
 
-  public toggleModal = () => this.setState({ showModal: !this.state.showModal });
+  public toggleModal = () =>
+    this.setState({
+      showModal: !this.state.showModal,
+      pendingSubmission: false,
+      pendingSubmissionError: null,
+    });
 
   public signTxnScenario = async (scenario: Scenario) => {
     const { connector, address } = this.state;
@@ -298,19 +315,39 @@ class App extends React.Component<any, any> {
       const request = formatJsonRpcRequest("algo_signTxn", requestParams);
       const result: Array<string | null> = await connector.sendCustomRequest(request);
 
+      const signedPartialTxns: Array<Uint8Array | null> = result.map((r, i) => {
+        if (r == null) {
+          if (!txnsToSign[i].shouldSign) {
+            return null;
+          }
+          throw new Error(`Transaction at index ${i}: was not signed when it should have been`);
+        }
+
+        if (!txnsToSign[i].shouldSign) {
+          throw new Error(`Transaction at index ${i} was signed when it should not have been`);
+        }
+
+        const rawSignedTxn = Buffer.from(r, "base64");
+        return new Uint8Array(rawSignedTxn);
+      });
+
+      const signedTxns: Uint8Array[] = signedPartialTxns.map((stxn, i) => {
+        if (stxn) {
+          return stxn;
+        }
+
+        return signTxnWithTestAccount(txnsToSign[i].txn);
+      });
+
       const signedTxnInfo: Array<{
         txID: string;
         signingAddress?: string;
         signature: string;
-      } | null> = result.map((r, i) => {
-        if (r == null) {
-          if (txnsToSign[i].shouldSign === false) {
-            return null;
-          }
-          throw new Error(`Signed txn that should not have been signed at index ${i}`);
+      } | null> = signedPartialTxns.map((rawSignedTxn, i) => {
+        if (rawSignedTxn == null) {
+          return null;
         }
 
-        const rawSignedTxn = Buffer.from(r, "base64");
         const signedTxn = algosdk.decodeSignedTransaction(rawSignedTxn);
         const txn = (signedTxn.txn as unknown) as algosdk.Transaction;
         const txID = txn.txID();
@@ -341,6 +378,7 @@ class App extends React.Component<any, any> {
       this.setState({
         connector,
         pendingRequest: false,
+        signedTxns,
         result: formattedResult || null,
       });
     } catch (error) {
@@ -349,8 +387,40 @@ class App extends React.Component<any, any> {
     }
   };
 
+  public async submitSignedTransaction() {
+    const { signedTxns } = this.state;
+    if (signedTxns == null) {
+      throw new Error("Transactions to submit are null");
+    }
+
+    this.setState({ pendingSubmission: true });
+
+    try {
+      const confirmedRound = await apiSubmitTransactions(signedTxns);
+      if (this.state.pendingSubmission === true) {
+        this.setState({ pendingSubmission: confirmedRound, pendingSubmissionError: null });
+      }
+      console.log(`Transaction confirmed at round ${confirmedRound}`);
+    } catch (err) {
+      if (this.state.pendingSubmission === true) {
+        this.setState({ pendingSubmissionError: err });
+      }
+      console.error("Error submitting transaction:", err);
+    }
+  }
+
   public render = () => {
-    const { assets, address, connected, fetching, showModal, pendingRequest, result } = this.state;
+    const {
+      assets,
+      address,
+      connected,
+      fetching,
+      showModal,
+      pendingRequest,
+      pendingSubmission,
+      pendingSubmissionError,
+      result,
+    } = this.state;
     return (
       <SLayout>
         <Column maxWidth={1000} spanHeight>
@@ -372,16 +442,6 @@ class App extends React.Component<any, any> {
             ) : (
               <SBalances>
                 <Banner />
-                <h3>Actions</h3>
-                <Column center>
-                  <STestButtonContainer>
-                    {scenarios.map(({ name, scenario }) => (
-                      <STestButton left key={name} onClick={() => this.signTxnScenario(scenario)}>
-                        {name}
-                      </STestButton>
-                    ))}
-                  </STestButtonContainer>
-                </Column>
                 <h3>Balances</h3>
                 {!fetching ? (
                   <AccountAssets assets={assets} />
@@ -392,6 +452,16 @@ class App extends React.Component<any, any> {
                     </SContainer>
                   </Column>
                 )}
+                <h3>Actions</h3>
+                <Column center>
+                  <STestButtonContainer>
+                    {scenarios.map(({ name, scenario }) => (
+                      <STestButton left key={name} onClick={() => this.signTxnScenario(scenario)}>
+                        {name}
+                      </STestButton>
+                    ))}
+                  </STestButtonContainer>
+                </Column>
               </SBalances>
             )}
           </SContent>
@@ -416,6 +486,23 @@ class App extends React.Component<any, any> {
                   </SRow>
                 ))}
               </STable>
+              <SModalButton
+                onClick={() => this.submitSignedTransaction()}
+                disabled={pendingSubmission !== false}
+              >
+                {"Submit transaction to network."}
+              </SModalButton>
+              {pendingSubmission === true && !pendingSubmissionError && (
+                <SModalTitle>{"Submitting..."}</SModalTitle>
+              )}
+              {typeof pendingSubmission === "number" && (
+                <SModalTitle>{`Transaction confirmed at round ${pendingSubmission}`}</SModalTitle>
+              )}
+              {!!pendingSubmissionError && (
+                <SModalTitle>
+                  {"Transaction rejected by network. See console for more information."}
+                </SModalTitle>
+              )}
             </SModalContainer>
           ) : (
             <SModalContainer>

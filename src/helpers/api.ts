@@ -1,7 +1,7 @@
 import algosdk from "algosdk";
 import { IAssetData } from "./types";
 
-const client = new algosdk.Algodv2("", "https://algoexplorerapi.io", "");
+const client = new algosdk.Algodv2("", "https://testnet.algoexplorerapi.io", "");
 
 export async function apiGetAccountAssets(address: string): Promise<IAssetData[]> {
   const accountInfo = await client
@@ -55,4 +55,23 @@ export async function apiGetTxnParams(): Promise<algosdk.SuggestedParams> {
   return params;
 }
 
-// export async function sendTransaction(txn: )
+export async function apiSubmitTransactions(stxns: Uint8Array[]): Promise<number> {
+  const { txId } = await client.sendRawTransaction(stxns).do();
+  return await waitForTransaction(txId);
+}
+
+async function waitForTransaction(txId: string): Promise<number> {
+  let lastStatus = await client.status().do();
+  let lastRound = lastStatus["last-round"];
+  while (true) {
+    const status = await client.pendingTransactionInformation(txId).do();
+    if (status["pool-error"]) {
+      throw new Error(`Transaction Pool Error: ${status["pool-error"]}`);
+    }
+    if (status["confirmed-round"]) {
+      return status["confirmed-round"];
+    }
+    lastStatus = await client.statusAfterBlock(lastRound + 1).do();
+    lastRound = lastStatus["last-round"];
+  }
+}

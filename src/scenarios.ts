@@ -1,6 +1,30 @@
 import algosdk from "algosdk";
 import { apiGetTxnParams } from "./helpers/api";
 
+const testAccounts = [
+  algosdk.mnemonicToSecretKey(
+    "cannon scatter chest item way pulp seminar diesel width tooth enforce fire rug mushroom tube sustain glide apple radar chronic ask plastic brown ability badge",
+  ),
+  algosdk.mnemonicToSecretKey(
+    "person congress dragon morning road sweet horror famous bomb engine eager silent home slam civil type melt field dry daring wheel monitor custom above term",
+  ),
+  algosdk.mnemonicToSecretKey(
+    "faint protect home drink journey humble tube clinic game rough conduct sell violin discover limit lottery anger baby leaf mountain peasant rude scene abstract casual",
+  ),
+];
+
+export function signTxnWithTestAccount(txn: algosdk.Transaction): Uint8Array {
+  const sender = algosdk.encodeAddress(txn.from.publicKey);
+
+  for (const testAccount of testAccounts) {
+    if (testAccount.addr === sender) {
+      return txn.signTxn(testAccount.sk);
+    }
+  }
+
+  throw new Error(`Cannot sign transaction from unknown test account: ${sender}`);
+}
+
 export type Scenario = (
   address: string,
 ) => Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean; authAddr?: string }>>;
@@ -12,7 +36,7 @@ const singlePayTxn: Scenario = async (
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 100000,
     note: new Uint8Array(Buffer.from("example note value")),
     suggestedParams,
@@ -29,10 +53,10 @@ const singlePayTxnWithClose: Scenario = async (
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 100000,
     note: new Uint8Array(Buffer.from("example note value")),
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    closeRemainderTo: testAccounts[1].addr,
     suggestedParams,
   });
 
@@ -47,10 +71,10 @@ const singlePayTxnWithRekey: Scenario = async (
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 100000,
     note: new Uint8Array(Buffer.from("example note value")),
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    rekeyTo: testAccounts[2].addr,
     suggestedParams,
   });
 
@@ -65,11 +89,11 @@ const singlePayTxnWithRekeyAndClose: Scenario = async (
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 100000,
     note: new Uint8Array(Buffer.from("example note value")),
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    rekeyTo: testAccounts[2].addr,
+    closeRemainderTo: testAccounts[1].addr,
     suggestedParams,
   });
 
@@ -106,7 +130,7 @@ const singleAssetTransferTxn: Scenario = async (
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 1000000,
     assetIndex,
     note: new Uint8Array(Buffer.from("example note value")),
@@ -126,11 +150,11 @@ const singleAssetTransferTxnWithClose: Scenario = async (
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 1000000,
     assetIndex,
     note: new Uint8Array(Buffer.from("example note value")),
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    closeRemainderTo: testAccounts[1].addr,
     suggestedParams,
   });
 
@@ -188,7 +212,7 @@ const singleAppCallWithRekey: Scenario = async (
     appIndex,
     note: new Uint8Array(Buffer.from("example note value")),
     appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    rekeyTo: testAccounts[2].addr,
     suggestedParams,
   });
 
@@ -232,7 +256,7 @@ const sign1FromGroupTxn: Scenario = async (
   });
 
   const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    from: testAccounts[0].addr,
     to: address,
     assetIndex,
     amount: 1000000,
@@ -267,7 +291,7 @@ const sign2FromGroupTxn: Scenario = async (
   });
 
   const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    from: testAccounts[0].addr,
     to: address,
     assetIndex,
     amount: 1000000,
@@ -277,7 +301,7 @@ const sign2FromGroupTxn: Scenario = async (
 
   const txn3 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 500000,
     note: new Uint8Array(Buffer.from("this is a payment txn")),
     suggestedParams,
@@ -303,7 +327,7 @@ const signGroupWithPayOptinTransfer: Scenario = async (
 
   const txn1 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 500000,
     note: new Uint8Array(Buffer.from("example note value")),
     suggestedParams,
@@ -320,7 +344,7 @@ const signGroupWithPayOptinTransfer: Scenario = async (
 
   const txn3 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 1000000,
     note: new Uint8Array(Buffer.from("example note value")),
@@ -345,7 +369,7 @@ const signGroupWithPayRekey: Scenario = async (
 
   const txn1 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 500000,
     note: new Uint8Array(Buffer.from("example note value")),
     suggestedParams,
@@ -353,10 +377,10 @@ const signGroupWithPayRekey: Scenario = async (
 
   const txn2 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 500000,
     note: new Uint8Array(Buffer.from("example note value")),
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    rekeyTo: testAccounts[2].addr,
     suggestedParams,
   });
 
@@ -388,7 +412,7 @@ const signGroupOf7: Scenario = async (
 
   const assetXfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 50,
     note: new Uint8Array(Buffer.from("example note value")),
@@ -397,17 +421,17 @@ const signGroupOf7: Scenario = async (
 
   const assetClose = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 50,
     note: new Uint8Array(Buffer.from("example note value")),
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    closeRemainderTo: testAccounts[1].addr,
     suggestedParams,
   });
 
   const payment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 500000,
     note: new Uint8Array(Buffer.from("example note value")),
     suggestedParams,
@@ -415,29 +439,29 @@ const signGroupOf7: Scenario = async (
 
   const accountClose = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 0,
     note: new Uint8Array(Buffer.from("example note value")),
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    closeRemainderTo: testAccounts[1].addr,
     suggestedParams,
   });
 
   const accountRekey = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 1000,
     note: new Uint8Array(Buffer.from("example note value")),
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    rekeyTo: testAccounts[2].addr,
     suggestedParams,
   });
 
   const accountRekeyAndClose = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     amount: 50000,
     note: new Uint8Array(Buffer.from("example note value")),
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    closeRemainderTo: testAccounts[1].addr,
+    rekeyTo: testAccounts[2].addr,
     suggestedParams,
   });
 
@@ -465,7 +489,7 @@ const signTxnWithAssetClose: Scenario = async (
 
   const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 50,
     note: new Uint8Array(Buffer.from("example note value")),
@@ -474,11 +498,11 @@ const signTxnWithAssetClose: Scenario = async (
 
   const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 50,
     note: new Uint8Array(Buffer.from("example note value")),
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    closeRemainderTo: testAccounts[1].addr,
     suggestedParams,
   });
 
@@ -501,7 +525,7 @@ const signTxnWithRekey: Scenario = async (
 
   const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 50,
     note: new Uint8Array(Buffer.from("example note value")),
@@ -510,11 +534,11 @@ const signTxnWithRekey: Scenario = async (
 
   const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 50,
     note: new Uint8Array(Buffer.from("example note value")),
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    rekeyTo: testAccounts[2].addr,
     suggestedParams,
   });
 
@@ -537,7 +561,7 @@ const signTxnWithRekeyAndAssetClose: Scenario = async (
 
   const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 10,
     note: new Uint8Array(Buffer.from("example note value")),
@@ -546,32 +570,32 @@ const signTxnWithRekeyAndAssetClose: Scenario = async (
 
   const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 20,
     note: new Uint8Array(Buffer.from("example note value")),
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+    closeRemainderTo: testAccounts[1].addr,
     suggestedParams,
   });
 
   const txn3 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 30,
     note: new Uint8Array(Buffer.from("example note value")),
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    rekeyTo: testAccounts[2].addr,
     suggestedParams,
   });
 
   const txn4 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: "NNUQ5WXJJFHGMJERF4U2UAUYXY2DMVF4YQ6P67Q4TM7UNEXTPLAA3LHGPQ",
+    to: testAccounts[0].addr,
     assetIndex,
     amount: 40,
     note: new Uint8Array(Buffer.from("example note value")),
-    closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
-    rekeyTo: "K6NE5KNTGSZH5LUCG2ITGDVGG5RUXLCJPUC5WP3JHCUOTUNZJJN5F7L45A",
+    closeRemainderTo: testAccounts[1].addr,
+    rekeyTo: testAccounts[2].addr,
     suggestedParams,
   });
 
@@ -612,7 +636,7 @@ const fullTxnGroup: Scenario = async (
       amount: 0,
       assetIndex,
       note: new Uint8Array(Buffer.from("example note value")),
-      closeRemainderTo: "C36WQELJIGAKOSXJVQNE6MQPQ3GOFJENDTBLONUD7GB7J5WNMK5AR6UJ5A",
+      closeRemainderTo: testAccounts[1].addr,
       suggestedParams,
     });
 
