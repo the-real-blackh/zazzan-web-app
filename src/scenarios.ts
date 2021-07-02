@@ -126,7 +126,7 @@ const singleAssetTransferTxn: Scenario = async (
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
   const suggestedParams = await apiGetTxnParams();
 
-  const assetIndex = 100;
+  const assetIndex = 11711; // HipoCoin on TestNet
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
