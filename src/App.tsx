@@ -14,7 +14,6 @@ import Loader from "./components/Loader";
 import { fonts } from "./styles";
 import { apiGetAccountAssets, apiSubmitTransactions } from "./helpers/api";
 import { IAssetData, IWalletTransaction, SignTxnParams } from "./helpers/types";
-import Banner from "./components/Banner";
 import AccountAssets from "./components/AccountAssets";
 import { Scenario, scenarios, signTxnWithTestAccount } from "./scenarios";
 
@@ -359,6 +358,10 @@ class App extends React.Component<any, any> {
           );
         }
 
+        if (!signedTxn.sig) {
+          throw new Error(`Signature not present on transaction at index ${i}`);
+        }
+
         return {
           txID,
           signingAddress: signedTxn.sgnr ? algosdk.encodeAddress(signedTxn.sgnr) : undefined,
@@ -428,11 +431,7 @@ class App extends React.Component<any, any> {
           <SContent>
             {!address && !assets.length ? (
               <SLanding center>
-                <h3>
-                  {`Try out WalletConnect`}
-                  <br />
-                  <span>{`v${process.env.REACT_APP_VERSION}`}</span>
-                </h3>
+                <h3>{`Algorand WalletConnect v${process.env.REACT_APP_VERSION} Demo`}</h3>
                 <SButtonContainer>
                   <SConnectButton left onClick={this.walletConnectInit} fetching={fetching}>
                     {"Connect to WalletConnect"}
@@ -441,7 +440,6 @@ class App extends React.Component<any, any> {
               </SLanding>
             ) : (
               <SBalances>
-                <Banner />
                 <h3>Balances</h3>
                 {!fetching ? (
                   <AccountAssets assets={assets} />
