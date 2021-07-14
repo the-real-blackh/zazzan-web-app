@@ -29,7 +29,7 @@
     "@json-rpc-tools/utils": "^1.7.5",
     "@walletconnect/client": "^1.4.0",
     "@walletconnect/qrcode-modal": "^1.4.0",
-    "algosdk": "file:../js-algorand-sdk/algosdk-1.9.1.tgz",
+    "algosdk": "github:algorand/js-algorand-sdk#0104ec5",
     "blockies-ts": "^1.0.0",
     "prop-types": "^15.7.2",
     "qr-image": "^3.2.0",
