@@ -12,7 +12,7 @@ import Modal from "./components/Modal";
 import Header from "./components/Header";
 import Loader from "./components/Loader";
 import { fonts } from "./styles";
-import { apiGetAccountAssets, apiSubmitTransactions } from "./helpers/api";
+import { apiGetAccountAssets, apiSubmitTransactions, ChainType } from "./helpers/api";
 import { IAssetData, IWalletTransaction, SignTxnParams } from "./helpers/types";
 import AccountAssets from "./components/AccountAssets";
 import { Scenario, scenarios, signTxnWithTestAccount } from "./scenarios";
@@ -139,6 +139,7 @@ interface IAppState {
   accounts: string[];
   address: string;
   result: any | null;
+  chain: ChainType;
   assets: IAssetData[];
 }
 
@@ -155,6 +156,7 @@ const INITIAL_STATE: IAppState = {
   accounts: [],
   address: "",
   result: null,
+  chain: ChainType.TestNet,
   assets: [],
 };
 
@@ -241,6 +243,10 @@ class App extends React.Component<any, any> {
     this.resetApp();
   };
 
+  public chainUpdate = (newChain: ChainType) => {
+    this.setState({ chain: newChain }, this.getAccountAssets);
+  };
+
   public resetApp = async () => {
     await this.setState({ ...INITIAL_STATE });
   };
@@ -267,11 +273,11 @@ class App extends React.Component<any, any> {
   };
 
   public getAccountAssets = async () => {
-    const { address } = this.state;
+    const { address, chain } = this.state;
     this.setState({ fetching: true });
     try {
       // get account balances
-      const assets = await apiGetAccountAssets(address);
+      const assets = await apiGetAccountAssets(chain, address);
 
       await this.setState({ fetching: false, address, assets });
     } catch (error) {
@@ -288,14 +294,14 @@ class App extends React.Component<any, any> {
     });
 
   public signTxnScenario = async (scenario: Scenario) => {
-    const { connector, address } = this.state;
+    const { connector, address, chain } = this.state;
 
     if (!connector) {
       return;
     }
 
     try {
-      const txnsToSign = await scenario(address);
+      const txnsToSign = await scenario(chain, address);
 
       // open modal
       this.toggleModal();
@@ -391,7 +397,7 @@ class App extends React.Component<any, any> {
   };
 
   public async submitSignedTransaction() {
-    const { signedTxns } = this.state;
+    const { signedTxns, chain } = this.state;
     if (signedTxns == null) {
       throw new Error("Transactions to submit are null");
     }
@@ -399,7 +405,7 @@ class App extends React.Component<any, any> {
     this.setState({ pendingSubmission: true });
 
     try {
-      const confirmedRound = await apiSubmitTransactions(signedTxns);
+      const confirmedRound = await apiSubmitTransactions(chain, signedTxns);
       if (this.state.pendingSubmission === true) {
         this.setState({ pendingSubmission: confirmedRound, pendingSubmissionError: null });
       }
@@ -414,6 +420,7 @@ class App extends React.Component<any, any> {
 
   public render = () => {
     const {
+      chain,
       assets,
       address,
       connected,
@@ -427,7 +434,13 @@ class App extends React.Component<any, any> {
     return (
       <SLayout>
         <Column maxWidth={1000} spanHeight>
-          <Header connected={connected} address={address} killSession={this.killSession} />
+          <Header
+            connected={connected}
+            address={address}
+            killSession={this.killSession}
+            chain={chain}
+            chainUpdate={this.chainUpdate}
+          />
           <SContent>
             {!address && !assets.length ? (
               <SLanding center>

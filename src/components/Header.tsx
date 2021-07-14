@@ -4,6 +4,7 @@ import * as PropTypes from "prop-types";
 import Blockie from "./Blockie";
 import { ellipseAddress } from "../helpers/utilities";
 import { transitions } from "../styles";
+import { ChainType } from "src/helpers/api";
 
 const SHeader = styled.div`
   margin-top: -1px;
@@ -72,9 +73,22 @@ const SDisconnect = styled.div<IHeaderStyle>`
 `;
 
 interface IHeaderProps {
-  killSession: () => void;
+  killSession: () => unknown;
   connected: boolean;
   address: string;
+  chain: ChainType;
+  chainUpdate: (newChain: ChainType) => unknown;
+}
+
+function stringToChainType(s: string): ChainType {
+  switch (s) {
+    case ChainType.MainNet.toString():
+      return ChainType.MainNet;
+    case ChainType.TestNet.toString():
+      return ChainType.TestNet;
+    default:
+      throw new Error(`Unknown chain selected: ${s}`);
+  }
 }
 
 const Header = (props: IHeaderProps) => {
@@ -83,7 +97,17 @@ const Header = (props: IHeaderProps) => {
     <SHeader {...props}>
       {connected && (
         <SActiveChain>
-          <p>{`Connected to Algorand TestNet`}</p>
+          <p>
+            {`Connected to `}
+            <select onChange={event => props.chainUpdate(stringToChainType(event.target.value))}>
+              <option value={ChainType.TestNet} selected={props.chain === ChainType.TestNet}>
+                Algorand TestNet
+              </option>
+              <option value={ChainType.MainNet} selected={props.chain === ChainType.MainNet}>
+                Algorand MainNet
+              </option>
+            </select>
+          </p>
         </SActiveChain>
       )}
       {address && (

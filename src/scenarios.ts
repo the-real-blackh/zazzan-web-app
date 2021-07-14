@@ -1,5 +1,5 @@
 import algosdk from "algosdk";
-import { apiGetTxnParams } from "./helpers/api";
+import { apiGetTxnParams, ChainType } from "./helpers/api";
 
 const testAccounts = [
   algosdk.mnemonicToSecretKey(
@@ -26,13 +26,15 @@ export function signTxnWithTestAccount(txn: algosdk.Transaction): Uint8Array {
 }
 
 export type Scenario = (
+  chain: ChainType,
   address: string,
 ) => Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean; authAddr?: string }>>;
 
 const singlePayTxn: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
@@ -47,9 +49,10 @@ const singlePayTxn: Scenario = async (
 };
 
 const singlePayTxnWithClose: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
@@ -65,9 +68,10 @@ const singlePayTxnWithClose: Scenario = async (
 };
 
 const singlePayTxnWithRekey: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
@@ -83,9 +87,10 @@ const singlePayTxnWithRekey: Scenario = async (
 };
 
 const singlePayTxnWithRekeyAndClose: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
@@ -102,9 +107,10 @@ const singlePayTxnWithRekeyAndClose: Scenario = async (
 };
 
 const singleAssetOptInTxn: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -122,9 +128,10 @@ const singleAssetOptInTxn: Scenario = async (
 };
 
 const singleAssetTransferTxn: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 11711; // HipoCoin on TestNet
 
@@ -142,9 +149,10 @@ const singleAssetTransferTxn: Scenario = async (
 };
 
 const singleAssetTransferTxnWithClose: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -163,9 +171,10 @@ const singleAssetTransferTxnWithClose: Scenario = async (
 };
 
 const singleAppOptIn: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const appIndex = 200;
 
@@ -182,9 +191,10 @@ const singleAppOptIn: Scenario = async (
 };
 
 const singleAppCall: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const appIndex = 200;
 
@@ -201,9 +211,10 @@ const singleAppCall: Scenario = async (
 };
 
 const singleAppCallWithRekey: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const appIndex = 200;
 
@@ -221,9 +232,10 @@ const singleAppCallWithRekey: Scenario = async (
 };
 
 const singleAppCloseOut: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const appIndex = 200;
 
@@ -240,9 +252,10 @@ const singleAppCloseOut: Scenario = async (
 };
 
 const sign1FromGroupTxn: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -275,9 +288,10 @@ const sign1FromGroupTxn: Scenario = async (
 };
 
 const sign2FromGroupTxn: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -319,9 +333,10 @@ const sign2FromGroupTxn: Scenario = async (
 };
 
 const signGroupWithPayOptinTransfer: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -363,9 +378,10 @@ const signGroupWithPayOptinTransfer: Scenario = async (
 };
 
 const signGroupWithPayRekey: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const txn1 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
@@ -395,9 +411,10 @@ const signGroupWithPayRekey: Scenario = async (
 };
 
 const signGroupOf7: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -481,9 +498,10 @@ const signGroupOf7: Scenario = async (
 };
 
 const signTxnWithAssetClose: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -517,9 +535,10 @@ const signTxnWithAssetClose: Scenario = async (
 };
 
 const signTxnWithRekey: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -553,9 +572,10 @@ const signTxnWithRekey: Scenario = async (
 };
 
 const signTxnWithRekeyAndAssetClose: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const assetIndex = 100;
 
@@ -612,9 +632,10 @@ const signTxnWithRekeyAndAssetClose: Scenario = async (
 };
 
 const fullTxnGroup: Scenario = async (
+  chain: ChainType,
   address: string,
 ): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
-  const suggestedParams = await apiGetTxnParams();
+  const suggestedParams = await apiGetTxnParams(chain);
 
   const txnsToSign: Array<{ txn: algosdk.Transaction; shouldSign: boolean }> = [];
 

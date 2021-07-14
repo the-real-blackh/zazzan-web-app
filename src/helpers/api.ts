@@ -1,9 +1,31 @@
 import algosdk from "algosdk";
 import { IAssetData } from "./types";
 
-const client = new algosdk.Algodv2("", "https://testnet.algoexplorerapi.io", "");
+export enum ChainType {
+  MainNet = "mainnet",
+  TestNet = "testnet",
+}
 
-export async function apiGetAccountAssets(address: string): Promise<IAssetData[]> {
+const mainNetClient = new algosdk.Algodv2("", "https://algoexplorerapi.io", "");
+const testNetClient = new algosdk.Algodv2("", "https://testnet.algoexplorerapi.io", "");
+
+function clientForChain(chain: ChainType): algosdk.Algodv2 {
+  switch (chain) {
+    case ChainType.MainNet:
+      return mainNetClient;
+    case ChainType.TestNet:
+      return testNetClient;
+    default:
+      throw new Error(`Unknown chain type: ${chain}`);
+  }
+}
+
+export async function apiGetAccountAssets(
+  chain: ChainType,
+  address: string,
+): Promise<IAssetData[]> {
+  const client = clientForChain(chain);
+
   const accountInfo = await client
     .accountInformation(address)
     .setIntDecoding(algosdk.IntDecoding.BIGINT)
@@ -50,17 +72,26 @@ export async function apiGetAccountAssets(address: string): Promise<IAssetData[]
   return assets;
 }
 
-export async function apiGetTxnParams(): Promise<algosdk.SuggestedParams> {
-  const params = await client.getTransactionParams().do();
+export async function apiGetTxnParams(chain: ChainType): Promise<algosdk.SuggestedParams> {
+  const params = await clientForChain(chain)
+    .getTransactionParams()
+    .do();
   return params;
 }
 
-export async function apiSubmitTransactions(stxns: Uint8Array[]): Promise<number> {
-  const { txId } = await client.sendRawTransaction(stxns).do();
-  return await waitForTransaction(txId);
+export async function apiSubmitTransactions(
+  chain: ChainType,
+  stxns: Uint8Array[],
+): Promise<number> {
+  const { txId } = await clientForChain(chain)
+    .sendRawTransaction(stxns)
+    .do();
+  return await waitForTransaction(chain, txId);
 }
 
-async function waitForTransaction(txId: string): Promise<number> {
+async function waitForTransaction(chain: ChainType, txId: string): Promise<number> {
+  const client = clientForChain(chain);
+
   let lastStatus = await client.status().do();
   let lastRound = lastStatus["last-round"];
   while (true) {
