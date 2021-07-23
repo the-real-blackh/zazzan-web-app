@@ -99,13 +99,12 @@ const Header = (props: IHeaderProps) => {
         <SActiveChain>
           <p>
             {`Connected to `}
-            <select onChange={event => props.chainUpdate(stringToChainType(event.target.value))}>
-              <option value={ChainType.TestNet} selected={props.chain === ChainType.TestNet}>
-                Algorand TestNet
-              </option>
-              <option value={ChainType.MainNet} selected={props.chain === ChainType.MainNet}>
-                Algorand MainNet
-              </option>
+            <select
+              onChange={event => props.chainUpdate(stringToChainType(event.target.value))}
+              value={props.chain}
+            >
+              <option value={ChainType.TestNet}>Algorand TestNet</option>
+              <option value={ChainType.MainNet}>Algorand MainNet</option>
             </select>
           </p>
         </SActiveChain>

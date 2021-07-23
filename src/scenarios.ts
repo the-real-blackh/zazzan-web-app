@@ -282,7 +282,7 @@ const sign1FromGroupTxn: Scenario = async (
     { txn: txn2, shouldSign: false },
   ];
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -327,7 +327,7 @@ const sign2FromGroupTxn: Scenario = async (
     { txn: txn3, shouldSign: true },
   ];
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -372,7 +372,7 @@ const signGroupWithPayOptinTransfer: Scenario = async (
     { txn: txn3, shouldSign: true },
   ];
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -405,7 +405,7 @@ const signGroupWithPayRekey: Scenario = async (
     { txn: txn2, shouldSign: true },
   ];
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -492,7 +492,7 @@ const signGroupOf7: Scenario = async (
     { txn: accountRekeyAndClose, shouldSign: true },
   ];
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -529,7 +529,7 @@ const signTxnWithAssetClose: Scenario = async (
     { txn: txn2, shouldSign: true },
   ];
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -566,7 +566,7 @@ const signTxnWithRekey: Scenario = async (
     { txn: txn2, shouldSign: true },
   ];
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -626,7 +626,7 @@ const signTxnWithRekeyAndAssetClose: Scenario = async (
     { txn: txn4, shouldSign: true },
   ];
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
@@ -665,7 +665,7 @@ const fullTxnGroup: Scenario = async (
     txnsToSign.push({ txn: closeOut, shouldSign: true });
   }
 
-  algosdk.computeGroupID(txnsToSign.map(toSign => toSign.txn));
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
 
   return txnsToSign;
 };
