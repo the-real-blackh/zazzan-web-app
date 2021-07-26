@@ -770,7 +770,7 @@ export const scenarios: Array<{ name: string; scenario: Scenario }> = [
     scenario: fullTxnGroup,
   },
   {
-    name: "21. Signle pay txn with invalid auth address",
+    name: "21. Single pay txn with invalid auth address",
     scenario: singlePayTxnWithInvalidAuthAddress
   }
 ];
