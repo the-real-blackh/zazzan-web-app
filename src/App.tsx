@@ -126,19 +126,29 @@ const STestButton = styled(Button as any)`
   margin: 12px;
 `;
 
+interface IResult {
+  method: string;
+  body: Array<
+    Array<{
+      txID: string;
+      signingAddress?: string;
+      signature: string;
+    } | null>
+  >;
+}
+
 interface IAppState {
   connector: WalletConnect | null;
   fetching: boolean;
   connected: boolean;
   showModal: boolean;
   pendingRequest: boolean;
-  signedTxns: Uint8Array[] | null;
-  pendingSubmission: boolean | number;
-  pendingSubmissionError: Error | null;
+  signedTxns: Uint8Array[][] | null;
+  pendingSubmissions: Array<number | Error>;
   uri: string;
   accounts: string[];
   address: string;
-  result: any | null;
+  result: IResult | null;
   chain: ChainType;
   assets: IAssetData[];
 }
@@ -150,8 +160,7 @@ const INITIAL_STATE: IAppState = {
   showModal: false,
   pendingRequest: false,
   signedTxns: null,
-  pendingSubmission: false,
-  pendingSubmissionError: null,
+  pendingSubmissions: [],
   uri: "",
   accounts: [],
   address: "",
@@ -160,7 +169,7 @@ const INITIAL_STATE: IAppState = {
   assets: [],
 };
 
-class App extends React.Component<any, any> {
+class App extends React.Component<unknown, IAppState> {
   public state: IAppState = {
     ...INITIAL_STATE,
   };
@@ -289,8 +298,7 @@ class App extends React.Component<any, any> {
   public toggleModal = () =>
     this.setState({
       showModal: !this.state.showModal,
-      pendingSubmission: false,
-      pendingSubmissionError: null,
+      pendingSubmissions: [],
     });
 
   public signTxnScenario = async (scenario: Scenario) => {
@@ -309,78 +317,107 @@ class App extends React.Component<any, any> {
       // toggle pending request indicator
       this.setState({ pendingRequest: true });
 
-      const walletTxns: IWalletTransaction[] = txnsToSign.map(({ txn, shouldSign, authAddr }) => ({
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString("base64"),
-        signers: shouldSign ? undefined : [], // TODO: put auth addr in signers array
-        authAddr,
-      }));
+      const flatTxns = txnsToSign.reduce((acc, val) => acc.concat(val), []);
+
+      const walletTxns: IWalletTransaction[] = flatTxns.map(
+        ({ txn, shouldSign, authAddr, message }) => ({
+          txn: Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString("base64"),
+          signers: shouldSign ? undefined : [], // TODO: put auth addr in signers array
+          authAddr,
+          message,
+        }),
+      );
 
       // sign transaction
       const requestParams: SignTxnParams = [walletTxns];
       const request = formatJsonRpcRequest("algo_signTxn", requestParams);
       const result: Array<string | null> = await connector.sendCustomRequest(request);
 
-      const signedPartialTxns: Array<Uint8Array | null> = result.map((r, i) => {
+      const indexToGroup = (index: number) => {
+        for (let group = 0; group < txnsToSign.length; group++) {
+          const groupLength = txnsToSign[group].length;
+          if (index < groupLength) {
+            return [group, index];
+          }
+
+          index -= groupLength;
+        }
+
+        throw new Error(`Index too large for groups: ${index}`);
+      };
+
+      const signedPartialTxns: Array<Array<Uint8Array | null>> = txnsToSign.map(() => []);
+      result.forEach((r, i) => {
+        const [group, groupIndex] = indexToGroup(i);
+        const toSign = txnsToSign[group][groupIndex];
+
         if (r == null) {
-          if (!txnsToSign[i].shouldSign) {
-            return null;
+          if (!toSign.shouldSign) {
+            signedPartialTxns[group].push(null);
+            return;
           }
           throw new Error(`Transaction at index ${i}: was not signed when it should have been`);
         }
 
-        if (!txnsToSign[i].shouldSign) {
+        if (!toSign.shouldSign) {
           throw new Error(`Transaction at index ${i} was signed when it should not have been`);
         }
 
         const rawSignedTxn = Buffer.from(r, "base64");
-        return new Uint8Array(rawSignedTxn);
+        signedPartialTxns[group].push(new Uint8Array(rawSignedTxn));
       });
 
-      const signedTxns: Uint8Array[] = signedPartialTxns.map((stxn, i) => {
-        if (stxn) {
-          return stxn;
-        }
+      const signedTxns: Uint8Array[][] = signedPartialTxns.map(
+        (signedPartialTxnsInternal, group) => {
+          return signedPartialTxnsInternal.map((stxn, groupIndex) => {
+            if (stxn) {
+              return stxn;
+            }
 
-        return signTxnWithTestAccount(txnsToSign[i].txn);
-      });
+            return signTxnWithTestAccount(txnsToSign[group][groupIndex].txn);
+          });
+        },
+      );
 
-      const signedTxnInfo: Array<{
+      const signedTxnInfo: Array<Array<{
         txID: string;
         signingAddress?: string;
         signature: string;
-      } | null> = signedPartialTxns.map((rawSignedTxn, i) => {
-        if (rawSignedTxn == null) {
-          return null;
-        }
+      } | null>> = signedPartialTxns.map((signedPartialTxnsInternal, group) => {
+        return signedPartialTxnsInternal.map((rawSignedTxn, i) => {
+          if (rawSignedTxn == null) {
+            return null;
+          }
 
-        const signedTxn = algosdk.decodeSignedTransaction(rawSignedTxn);
-        const txn = (signedTxn.txn as unknown) as algosdk.Transaction;
-        const txID = txn.txID();
-        const unsignedTxID = txnsToSign[i].txn.txID();
+          const signedTxn = algosdk.decodeSignedTransaction(rawSignedTxn);
+          const txn = (signedTxn.txn as unknown) as algosdk.Transaction;
+          const txID = txn.txID();
+          const unsignedTxID = txnsToSign[group][i].txn.txID();
 
-        if (txID !== unsignedTxID) {
-          throw new Error(
-            `Signed transaction at index ${i} differs from unsigned transaction. Got ${txID}, expected ${unsignedTxID}`,
-          );
-        }
+          if (txID !== unsignedTxID) {
+            throw new Error(
+              `Signed transaction at index ${i} differs from unsigned transaction. Got ${txID}, expected ${unsignedTxID}`,
+            );
+          }
 
-        if (!signedTxn.sig) {
-          throw new Error(`Signature not present on transaction at index ${i}`);
-        }
+          if (!signedTxn.sig) {
+            throw new Error(`Signature not present on transaction at index ${i}`);
+          }
 
-        return {
-          txID,
-          signingAddress: signedTxn.sgnr ? algosdk.encodeAddress(signedTxn.sgnr) : undefined,
-          signature: Buffer.from(signedTxn.sig).toString("base64"),
-        };
+          return {
+            txID,
+            signingAddress: signedTxn.sgnr ? algosdk.encodeAddress(signedTxn.sgnr) : undefined,
+            signature: Buffer.from(signedTxn.sig).toString("base64"),
+          };
+        });
       });
 
       console.log("Signed txn info:", signedTxnInfo);
 
       // format displayed result
-      const formattedResult = {
+      const formattedResult: IResult = {
         method: "algo_signTxn",
-        result: signedTxnInfo,
+        body: signedTxnInfo,
       };
 
       // display result
@@ -388,7 +425,7 @@ class App extends React.Component<any, any> {
         connector,
         pendingRequest: false,
         signedTxns,
-        result: formattedResult || null,
+        result: formattedResult,
       });
     } catch (error) {
       console.error(error);
@@ -402,20 +439,39 @@ class App extends React.Component<any, any> {
       throw new Error("Transactions to submit are null");
     }
 
-    this.setState({ pendingSubmission: true });
+    this.setState({ pendingSubmissions: signedTxns.map(() => 0) });
 
-    try {
-      const confirmedRound = await apiSubmitTransactions(chain, signedTxns);
-      if (this.state.pendingSubmission === true) {
-        this.setState({ pendingSubmission: confirmedRound, pendingSubmissionError: null });
+    signedTxns.forEach(async (signedTxn, index) => {
+      try {
+        const confirmedRound = await apiSubmitTransactions(chain, signedTxn);
+
+        this.setState(prevState => {
+          return {
+            pendingSubmissions: prevState.pendingSubmissions.map((v, i) => {
+              if (index === i) {
+                return confirmedRound;
+              }
+              return v;
+            }),
+          };
+        });
+
+        console.log(`Transaction confirmed at round ${confirmedRound}`);
+      } catch (err) {
+        this.setState(prevState => {
+          return {
+            pendingSubmissions: prevState.pendingSubmissions.map((v, i) => {
+              if (index === i) {
+                return err;
+              }
+              return v;
+            }),
+          };
+        });
+
+        console.error(`Error submitting transaction at index ${index}:`, err);
       }
-      console.log(`Transaction confirmed at round ${confirmedRound}`);
-    } catch (err) {
-      if (this.state.pendingSubmission === true) {
-        this.setState({ pendingSubmissionError: err });
-      }
-      console.error("Error submitting transaction:", err);
-    }
+    });
   }
 
   public render = () => {
@@ -427,8 +483,7 @@ class App extends React.Component<any, any> {
       fetching,
       showModal,
       pendingRequest,
-      pendingSubmission,
-      pendingSubmissionError,
+      pendingSubmissions,
       result,
     } = this.state;
     return (
@@ -490,30 +545,48 @@ class App extends React.Component<any, any> {
             <SModalContainer>
               <SModalTitle>{"Call Request Approved"}</SModalTitle>
               <STable>
-                {Object.keys(result).map(key => (
-                  <SRow key={key}>
-                    <SKey>{key}</SKey>
-                    <SValue>{JSON.stringify(result[key])}</SValue>
+                <SRow>
+                  <SKey>Method</SKey>
+                  <SValue>{result.method}</SValue>
+                </SRow>
+                {result.body.map((signedTxns, index) => (
+                  <SRow key={index}>
+                    <SKey>{`Atomic group ${index}`}</SKey>
+                    <SValue>
+                      {signedTxns.map(txn => (
+                        <>
+                          {!!txn?.txID && <p>TxID: {txn.txID}</p>}
+                          {!!txn?.signature && <p>Sig: {txn.signature}</p>}
+                          {!!txn?.signingAddress && <p>AuthAddr: {txn.signingAddress}</p>}
+                        </>
+                      ))}
+                    </SValue>
                   </SRow>
                 ))}
               </STable>
               <SModalButton
                 onClick={() => this.submitSignedTransaction()}
-                disabled={pendingSubmission !== false}
+                disabled={pendingSubmissions.length !== 0}
               >
                 {"Submit transaction to network."}
               </SModalButton>
-              {pendingSubmission === true && !pendingSubmissionError && (
-                <SModalTitle>{"Submitting..."}</SModalTitle>
-              )}
-              {typeof pendingSubmission === "number" && (
-                <SModalTitle>{`Transaction confirmed at round ${pendingSubmission}`}</SModalTitle>
-              )}
-              {!!pendingSubmissionError && (
-                <SModalTitle>
-                  {"Transaction rejected by network. See console for more information."}
-                </SModalTitle>
-              )}
+              {pendingSubmissions.map((submissionInfo, index) => {
+                const key = `${index}:${
+                  typeof submissionInfo === "number" ? submissionInfo : "err"
+                }`;
+                const prefix = `Txn Group ${index}: `;
+                let content: string;
+
+                if (submissionInfo === 0) {
+                  content = "Submitting...";
+                } else if (typeof submissionInfo === "number") {
+                  content = `Confirmed at round ${submissionInfo}`;
+                } else {
+                  content = "Rejected by network. See console for more information.";
+                }
+
+                return <SModalTitle key={key}>{prefix + content}</SModalTitle>;
+              })}
             </SModalContainer>
           ) : (
             <SModalContainer>
