@@ -670,6 +670,24 @@ const fullTxnGroup: Scenario = async (
   return txnsToSign;
 };
 
+const singlePayTxnWithInvalidAuthAddress: Scenario = async (
+  chain: ChainType,
+  address: string,
+): Promise<Array<{ txn: algosdk.Transaction; shouldSign: boolean }>> => {
+  const suggestedParams = await apiGetTxnParams(chain);
+
+  const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: testAccounts[0].addr,
+    amount: 100000,
+    note: new Uint8Array(Buffer.from("example note value")),
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn, shouldSign: true, authAddr:"INVALID_ADDRESS" }];
+  return txnsToSign;
+};
+
 export const scenarios: Array<{ name: string; scenario: Scenario }> = [
   {
     name: "1. Sign single pay txn",
@@ -751,4 +769,8 @@ export const scenarios: Array<{ name: string; scenario: Scenario }> = [
     name: "20. Full txn group",
     scenario: fullTxnGroup,
   },
+  {
+    name: "21. Single pay txn with invalid auth address",
+    scenario: singlePayTxnWithInvalidAuthAddress
+  }
 ];
