@@ -62,6 +62,13 @@ function getAssetIndex(chain: ChainType, type: AssetTransactionType): number {
   }
 }
 
+function getAppIndex(chain: ChainType): number {
+  if (chain === ChainType.TestNet) {
+    return 22314999;
+  }
+  throw new Error(`App not defined for chain ${chain}`);
+}
+
 const singlePayTxn: Scenario = async (
   chain: ChainType,
   address: string,
@@ -265,7 +272,7 @@ const singleAppOptIn: Scenario = async (
 ): Promise<ScenarioReturnType> => {
   const suggestedParams = await apiGetTxnParams(chain);
 
-  const appIndex = 200;
+  const appIndex = getAppIndex(chain);
 
   const txn = algosdk.makeApplicationOptInTxnFromObject({
     from: address,
@@ -285,7 +292,7 @@ const singleAppCall: Scenario = async (
 ): Promise<ScenarioReturnType> => {
   const suggestedParams = await apiGetTxnParams(chain);
 
-  const appIndex = 200;
+  const appIndex = getAppIndex(chain);
 
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
@@ -305,7 +312,7 @@ const singleAppCallWithRekey: Scenario = async (
 ): Promise<ScenarioReturnType> => {
   const suggestedParams = await apiGetTxnParams(chain);
 
-  const appIndex = 200;
+  const appIndex = getAppIndex(chain);
 
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
@@ -326,7 +333,7 @@ const singleAppCloseOut: Scenario = async (
 ): Promise<ScenarioReturnType> => {
   const suggestedParams = await apiGetTxnParams(chain);
 
-  const appIndex = 200;
+  const appIndex = getAppIndex(chain);
 
   const txn = algosdk.makeApplicationCloseOutTxnFromObject({
     from: address,
