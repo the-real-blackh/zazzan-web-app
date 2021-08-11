@@ -1,7 +1,7 @@
 import * as React from "react";
 import styled from "styled-components";
 import WalletConnect from "@walletconnect/client";
-import QRCodeModal from "@walletconnect/qrcode-modal";
+import QRCodeModal from "algorand-walletconnect-qrcode-modal";
 import { IInternalEvent } from "@walletconnect/types";
 import { formatJsonRpcRequest } from "@json-rpc-tools/utils";
 import algosdk from "algosdk";
