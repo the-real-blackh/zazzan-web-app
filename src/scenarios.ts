@@ -347,6 +347,93 @@ const singleAppCloseOut: Scenario = async (
   return [txnsToSign];
 };
 
+const singleAppClearState: Scenario = async (
+  chain: ChainType,
+  address: string,
+): Promise<ScenarioReturnType> => {
+  const suggestedParams = await apiGetTxnParams(chain);
+
+  const appIndex = getAppIndex(chain);
+
+  const txn = algosdk.makeApplicationClearStateTxnFromObject({
+    from: address,
+    appIndex,
+    note: new Uint8Array(Buffer.from("example note value")),
+    appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn }];
+  return [txnsToSign];
+};
+
+const singleAppCreate: Scenario = async (
+  chain: ChainType,
+  address: string,
+): Promise<ScenarioReturnType> => {
+  const suggestedParams = await apiGetTxnParams(chain);
+
+  const approvalProgram = Uint8Array.from([4, 129, 1, 67]);
+  const clearProgram = Uint8Array.from([3, 129, 1, 67]);
+
+  const txn = algosdk.makeApplicationCreateTxnFromObject({
+    from: address,
+    approvalProgram,
+    clearProgram,
+    numGlobalInts: 1,
+    numGlobalByteSlices: 2,
+    numLocalInts: 3,
+    numLocalByteSlices: 4,
+    extraPages: 1,
+    onComplete: algosdk.OnApplicationComplete.NoOpOC,
+    note: new Uint8Array(Buffer.from("example note value")),
+    appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn }];
+  return [txnsToSign];
+};
+
+const groupWithAppCreate: Scenario = async (
+  chain: ChainType,
+  address: string,
+): Promise<ScenarioReturnType> => {
+  const suggestedParams = await apiGetTxnParams(chain);
+
+  const approvalProgram = Uint8Array.from([4, 129, 1, 67]);
+  const clearProgram = Uint8Array.from([3, 129, 1, 67]);
+
+  const txn1 = algosdk.makeApplicationCreateTxnFromObject({
+    from: testAccounts[0].addr,
+    approvalProgram,
+    clearProgram,
+    numGlobalInts: 1,
+    numGlobalByteSlices: 2,
+    numLocalInts: 3,
+    numLocalByteSlices: 4,
+    extraPages: 1,
+    onComplete: algosdk.OnApplicationComplete.NoOpOC,
+    note: new Uint8Array(Buffer.from("note value for app create")),
+    appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
+    suggestedParams,
+  });
+
+  const txn2 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: testAccounts[0].addr,
+    amount: 100000,
+    note: new Uint8Array(Buffer.from("note value for pay")),
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn: txn1, signers: [] }, { txn: txn2 }];
+
+  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
+
+  return [txnsToSign];
+};
+
 const sign1FromGroupTxn: Scenario = async (
   chain: ChainType,
   address: string,
@@ -1541,5 +1628,17 @@ export const scenarios: Array<{ name: string; scenario: Scenario }> = [
   {
     name: "37. Atomic group and single txn with no sig needed (invalid)",
     scenario: atomicAndSingleNoSignTxn,
+  },
+  {
+    name: "38. Sign single app clear state txn",
+    scenario: singleAppClearState,
+  },
+  {
+    name: "39. Sign single app create txn (invalid)",
+    scenario: singleAppCreate,
+  },
+  {
+    name: "40. Sign atomic group with app create txn",
+    scenario: groupWithAppCreate,
   },
 ];
