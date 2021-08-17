@@ -1480,6 +1480,24 @@ const atomicAndSingleNoSignTxn: Scenario = async (
   return [group1, group2, group3];
 };
 
+const txnWithLargeNote: Scenario = async (
+  chain: ChainType,
+  address: string,
+): Promise<ScenarioReturnType> => {
+  const suggestedParams = await apiGetTxnParams(chain);
+
+  const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: testAccounts[0].addr,
+    amount: 100000,
+    note: new Uint8Array(Buffer.from("max length note (512)" + "!".repeat(491))),
+    suggestedParams,
+  });
+
+  const txnsToSign = [{ txn, message: "This is a transaction message" }];
+  return [txnsToSign];
+};
+
 export const scenarios: Array<{ name: string; scenario: Scenario }> = [
   {
     name: "1. Sign single pay txn",
@@ -1640,5 +1658,9 @@ export const scenarios: Array<{ name: string; scenario: Scenario }> = [
   {
     name: "40. Sign atomic group with app create txn",
     scenario: groupWithAppCreate,
+  },
+  {
+    name: "41. Txn with large note",
+    scenario: txnWithLargeNote,
   },
 ];
