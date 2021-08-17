@@ -63,9 +63,14 @@ function getAssetIndex(chain: ChainType, type: AssetTransactionType): number {
 }
 
 function getAppIndex(chain: ChainType): number {
+  if (chain === ChainType.MainNet) {
+    return 305162725;
+  }
+
   if (chain === ChainType.TestNet) {
     return 22314999;
   }
+
   throw new Error(`App not defined for chain ${chain}`);
 }
 
