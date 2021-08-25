@@ -2,11 +2,10 @@
   "name": "walletconnect-example-dapp",
   "version": "1.6.1",
   "private": true,
-  "homepage": "https://jasonpaulos.github.io/algorand-walletconnect-example-dapp",
+  "homepage": "https://algorand.github.io/walletconnect-example-dapp",
   "keywords": [
     "walletconnect",
-    "ethereum",
-    "web3",
+    "algorand",
     "crypto"
   ],
   "author": "WalletConnect <walletconnect.org>",
@@ -20,10 +19,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/walletconnect/walletconnect-example-dapp.git"
+    "url": "git+https://github.com/algorand/walletconnect-example-dapp.git"
   },
   "bugs": {
-    "url": "https://github.com/walletconnect/walletconnect-example-dapp/issues"
+    "url": "https://github.com/algorand/walletconnect-example-dapp/issues"
   },
   "dependencies": {
     "@json-rpc-tools/utils": "^1.7.5",
