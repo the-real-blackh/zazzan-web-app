@@ -400,7 +400,7 @@ const singleAppCreate: Scenario = async (
   return [txnsToSign];
 };
 
-const groupWithAppCreate: Scenario = async (
+const singleAppUpdate: Scenario = async (
   chain: ChainType,
   address: string,
 ): Promise<ScenarioReturnType> => {
@@ -409,33 +409,39 @@ const groupWithAppCreate: Scenario = async (
   const approvalProgram = Uint8Array.from([4, 129, 1, 67]);
   const clearProgram = Uint8Array.from([3, 129, 1, 67]);
 
-  const txn1 = algosdk.makeApplicationCreateTxnFromObject({
-    from: testAccounts[0].addr,
+  const appIndex = getAppIndex(chain);
+
+  const txn = algosdk.makeApplicationUpdateTxnFromObject({
+    from: address,
+    appIndex,
     approvalProgram,
     clearProgram,
-    numGlobalInts: 1,
-    numGlobalByteSlices: 2,
-    numLocalInts: 3,
-    numLocalByteSlices: 4,
-    extraPages: 1,
-    onComplete: algosdk.OnApplicationComplete.NoOpOC,
-    note: new Uint8Array(Buffer.from("note value for app create")),
+    note: new Uint8Array(Buffer.from("example note value")),
     appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
     suggestedParams,
   });
 
-  const txn2 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  const txnsToSign = [{ txn }];
+  return [txnsToSign];
+};
+
+const singleAppDelete: Scenario = async (
+  chain: ChainType,
+  address: string,
+): Promise<ScenarioReturnType> => {
+  const suggestedParams = await apiGetTxnParams(chain);
+
+  const appIndex = getAppIndex(chain);
+
+  const txn = algosdk.makeApplicationDeleteTxnFromObject({
     from: address,
-    to: testAccounts[0].addr,
-    amount: 100000,
-    note: new Uint8Array(Buffer.from("note value for pay")),
+    appIndex,
+    note: new Uint8Array(Buffer.from("example note value")),
+    appArgs: [Uint8Array.from([0]), Uint8Array.from([0, 1])],
     suggestedParams,
   });
 
-  const txnsToSign = [{ txn: txn1, signers: [] }, { txn: txn2 }];
-
-  algosdk.assignGroupID(txnsToSign.map(toSign => toSign.txn));
-
+  const txnsToSign = [{ txn }];
   return [txnsToSign];
 };
 
@@ -1653,19 +1659,23 @@ export const scenarios: Array<{ name: string; scenario: Scenario }> = [
     scenario: atomicAndSingleNoSignTxn,
   },
   {
-    name: "38. Sign single app clear state txn",
+    name: "38. Txn with large note",
+    scenario: txnWithLargeNote,
+  },
+  {
+    name: "39. Sign single app clear state txn",
     scenario: singleAppClearState,
   },
   {
-    name: "39. Sign single app create txn (invalid)",
+    name: "40. Sign single app create txn",
     scenario: singleAppCreate,
   },
   {
-    name: "40. Sign atomic group with app create txn",
-    scenario: groupWithAppCreate,
+    name: "41. Sign single app update txn",
+    scenario: singleAppUpdate,
   },
   {
-    name: "41. Txn with large note",
-    scenario: txnWithLargeNote,
+    name: "42. Sign single app delete txn",
+    scenario: singleAppDelete,
   },
 ];
