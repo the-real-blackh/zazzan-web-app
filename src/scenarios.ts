@@ -50,6 +50,18 @@ function getAssetIndex(chain: ChainType): number {
   throw new Error(`Asset not defined for chain ${chain}`);
 }
 
+function getAssetReserve(chain: ChainType): string {
+  if (chain === ChainType.MainNet) {
+    return "2UEQTE5QDNXPI7M3TU44G6SYKLFWLPQO7EBZM7K7MHMQQMFI4QJPLHQFHM";
+  }
+
+  if (chain === ChainType.TestNet) {
+    return "UJBZPEMXLD6KZOLUBUDSZ3DXECXYDADZZLBH6O7CMYXHE2PLTCW44VK5T4";
+  }
+
+  throw new Error(`Asset reserve not defined for chain ${chain}`);
+}
+
 function getAppIndex(chain: ChainType): number {
   if (chain === ChainType.MainNet) {
     return 305162725;
@@ -139,7 +151,7 @@ const singleAssetCloseTxn: Scenario = async (
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
-    to: address,
+    to: getAssetReserve(chain),
     amount: 0,
     assetIndex,
     note: new Uint8Array(Buffer.from("example note value")),
