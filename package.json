@@ -1,8 +1,8 @@
 {
-  "name": "walletconnect-example-dapp",
-  "version": "1.6.5",
+  "name": "zazzan",
+  "version": "0.1.0",
   "private": true,
-  "homepage": "https://algorand.github.io/walletconnect-example-dapp",
+  "homepage": "https://imakelma.com/~blackh/zazzan",
   "keywords": [
     "walletconnect",
     "algorand",

@@ -44,7 +44,7 @@ const SButtonContainer = styled(Column as any)`
 const SConnectButton = styled(Button as any)`
   border-radius: 8px;
   font-size: ${fonts.size.medium};
-  height: 44px;
+  height: 70px;
   width: 100%;
   margin: 12px 0;
 `;
@@ -541,10 +541,10 @@ class App extends React.Component<unknown, IAppState> {
           <SContent>
             {!address && (!assets.length || zanAsset == null || !zazzanAppAssets.length) ? (
               <SLanding center>
-                <h3>{`Algorand WalletConnect v${process.env.REACT_APP_VERSION} Demo`}</h3>
+                <h3>{`Zazzan Web App v${process.env.REACT_APP_VERSION}`}</h3>
                 <SButtonContainer>
                   <SConnectButton left onClick={this.walletConnectInit} fetching={fetching}>
-                    {"Connect to WalletConnect"}
+                    {"Connect to your Algorand wallet"}
                   </SConnectButton>
                 </SButtonContainer>
               </SLanding>
