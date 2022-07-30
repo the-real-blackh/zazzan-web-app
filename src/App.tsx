@@ -12,11 +12,12 @@ import Modal from "./components/Modal";
 import Header from "./components/Header";
 import Loader from "./components/Loader";
 import { fonts } from "./styles";
-import { apiGetAccountAssets, apiGetAssetByID, apiSubmitTransactions, ChainType } from "./helpers/api";
+import { apiGetAccountAssets, apiGetAssetByID, apiSubmitTransactions, ChainType, apiGetApplicationByID } from "./helpers/api";
 import { IAssetData, IWalletTransaction, SignTxnParams } from "./helpers/types";
 import AccountAssets from "./components/AccountAssets";
 import ZANCirculatingSupply from "./components/ZANCirculatingSupply";
-import { Scenario, scenarios, signTxnWithTestAccount, getZANIndex, getZazzanAppAddress } from "./scenarios";
+import ZazzanAdminFund from "./components/ZazzanAdminFund";
+import { Scenario, scenarios, signTxnWithTestAccount, getZANIndex, getZazzanAppIndex, getZazzanAppAddress, getZazzanAdminFundAddress } from "./scenarios";
 
 const SLayout = styled.div`
   position: relative;
@@ -164,6 +165,7 @@ interface IAppState {
   assets: IAssetData[];
   zanAsset: Record<string, any> | null;
   zazzanAppAssets: IAssetData[];
+  zazzanAdminFundAssets: IAssetData[];
 }
 
 const INITIAL_STATE: IAppState = {
@@ -182,7 +184,8 @@ const INITIAL_STATE: IAppState = {
   chain: ChainType.TestNet,
   assets: [],
   zanAsset: null,
-  zazzanAppAssets: []
+  zazzanAppAssets: [],
+  zazzanAdminFundAssets: [],
 };
 
 class App extends React.Component<unknown, IAppState> {
@@ -305,8 +308,10 @@ class App extends React.Component<unknown, IAppState> {
       const assets = await apiGetAccountAssets(chain, address);
       const zanAsset = await apiGetAssetByID(chain, getZANIndex(chain));
       const zazzanAppAssets = await apiGetAccountAssets(chain, getZazzanAppAddress(chain));
-
-      await this.setState({ fetching: false, address, assets, zanAsset, zazzanAppAssets });
+      const zazzanIndex = getZazzanAppIndex(chain);
+      const app = await apiGetApplicationByID(chain, zazzanIndex);
+      const zazzanAdminFundAssets = await apiGetAccountAssets(chain, getZazzanAdminFundAddress(app));
+      await this.setState({ fetching: false, address, assets, zanAsset, zazzanAppAssets, zazzanAdminFundAssets });
     } catch (error) {
       console.error(error);
       await this.setState({ fetching: false });
@@ -526,7 +531,8 @@ class App extends React.Component<unknown, IAppState> {
       result,
       zanAsset,
       zazzanAppAssets,
-      requestArg
+      requestArg,
+      zazzanAdminFundAssets,
     } = this.state;
     return (
       <SLayout>
@@ -552,7 +558,10 @@ class App extends React.Component<unknown, IAppState> {
               <SBalances>
                 {
                     zanAsset != null ? (
+                          <>
                             <ZANCirculatingSupply asset={zanAsset} appAssets={zazzanAppAssets} chain={chain}/>
+                            <ZazzanAdminFund asset={zanAsset} adminFundAssets={zazzanAdminFundAssets} chain={chain}/>
+                          </>
                         ) : (<></>)  // How to make this tidier?
                 }
                 <h3>Balances</h3>

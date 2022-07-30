@@ -81,7 +81,7 @@ function getAssetReserve(chain: ChainType): string {
 }
 */
 
-function getZazzanAppIndex(chain: ChainType): number {
+export function getZazzanAppIndex(chain: ChainType): number {
   if (chain === ChainType.MainNet) {
     return 101543557;  // TO DO
   }
@@ -105,6 +105,17 @@ export function getZazzanAppAddress(chain: ChainType): string {
   throw new Error(`App not defined for chain ${chain}`);
 }
 
+export function getZazzanAdminFundAddress(app: any): string {
+  const entries = app.params['global-state'].filter((o: any) => o.key === "YWRtRnVuZA==");
+  const adminFund64 = entries[0].value.bytes;
+  const raw = window.atob(adminFund64);
+  const rawLength = raw.length;
+  const array = new Uint8Array(new ArrayBuffer(rawLength));
+  for(let i = 0; i < rawLength; i++) {
+    array[i] = raw.charCodeAt(i);
+  }
+  return algosdk.encodeAddress(array);
+}
 
 /*
 const singlePayTxn: Scenario = async (
@@ -322,15 +333,7 @@ const singleZANtoUSDC: Scenario =  { argRequired : "ZAN amount", action : async 
   const assets = [ZANIndex, USDCIndex];
 
   const app = await apiGetApplicationByID(chain, zazzanIndex);
-  const entries = app.params['global-state'].filter((o: any) => o.key === "YWRtRnVuZA==");
-  const adminFund64 = entries[0].value.bytes;
-  const raw = window.atob(adminFund64);
-  const rawLength = raw.length;
-  const array = new Uint8Array(new ArrayBuffer(rawLength));
-  for(let i = 0; i < rawLength; i++) {
-    array[i] = raw.charCodeAt(i);
-  }
-  const adminFund = algosdk.encodeAddress(array);
+  const adminFund = getZazzanAdminFundAddress(app);
 
   const txn2 = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
