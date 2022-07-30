@@ -21,12 +21,12 @@ export const fonts = {
     small: "14px",
     medium: "16px",
     large: "18px",
-    h1: "60px",
-    h2: "50px",
-    h3: "40px",
-    h4: "32px",
-    h5: "24px",
-    h6: "20px",
+    h1: "50px",
+    h2: "40px",
+    h3: "32px",
+    h4: "24px",
+    h5: "20px",
+    h6: "16px"
   },
   weight: {
     normal: 400,
@@ -127,7 +127,7 @@ export const globalStyle = `
   	text-decoration: none;
   	margin: 0;
     padding: 0;
-    margin: 0.7em 0;
+    margin: 0.2em 0;
   }
 
   h1 {

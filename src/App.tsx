@@ -12,10 +12,11 @@ import Modal from "./components/Modal";
 import Header from "./components/Header";
 import Loader from "./components/Loader";
 import { fonts } from "./styles";
-import { apiGetAccountAssets, apiSubmitTransactions, ChainType } from "./helpers/api";
+import { apiGetAccountAssets, apiGetAssetByID, apiSubmitTransactions, ChainType } from "./helpers/api";
 import { IAssetData, IWalletTransaction, SignTxnParams } from "./helpers/types";
 import AccountAssets from "./components/AccountAssets";
-import { Scenario, scenarios, signTxnWithTestAccount } from "./scenarios";
+import ZANCirculatingSupply from "./components/ZANCirculatingSupply";
+import { Scenario, scenarios, signTxnWithTestAccount, getZANIndex, getZazzanAppAddress } from "./scenarios";
 
 const SLayout = styled.div`
   position: relative;
@@ -74,6 +75,15 @@ const SModalButton = styled.button`
   margin: 1em 0;
   font-size: 18px;
   font-weight: 700;
+`;
+
+const SModalInput = styled.input`
+  border: 1px solid #000;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 5px;
+  width: 150px;
+  box-sizing: border-box;
 `;
 
 const SModalParagraph = styled.p`
@@ -143,6 +153,7 @@ interface IAppState {
   connected: boolean;
   showModal: boolean;
   pendingRequest: boolean;
+  requestArg: { text : string, resolve : (value : number) => void } | null;
   signedTxns: Uint8Array[][] | null;
   pendingSubmissions: Array<number | Error>;
   uri: string;
@@ -151,6 +162,8 @@ interface IAppState {
   result: IResult | null;
   chain: ChainType;
   assets: IAssetData[];
+  zanAsset: Record<string, any> | null;
+  zazzanAppAssets: IAssetData[];
 }
 
 const INITIAL_STATE: IAppState = {
@@ -159,6 +172,7 @@ const INITIAL_STATE: IAppState = {
   connected: false,
   showModal: false,
   pendingRequest: false,
+  requestArg: null,
   signedTxns: null,
   pendingSubmissions: [],
   uri: "",
@@ -167,6 +181,8 @@ const INITIAL_STATE: IAppState = {
   result: null,
   chain: ChainType.TestNet,
   assets: [],
+  zanAsset: null,
+  zazzanAppAssets: []
 };
 
 class App extends React.Component<unknown, IAppState> {
@@ -287,8 +303,10 @@ class App extends React.Component<unknown, IAppState> {
     try {
       // get account balances
       const assets = await apiGetAccountAssets(chain, address);
+      const zanAsset = await apiGetAssetByID(chain, getZANIndex(chain));
+      const zazzanAppAssets = await apiGetAccountAssets(chain, getZazzanAppAddress(chain));
 
-      await this.setState({ fetching: false, address, assets });
+      await this.setState({ fetching: false, address, assets, zanAsset, zazzanAppAssets });
     } catch (error) {
       console.error(error);
       await this.setState({ fetching: false });
@@ -309,7 +327,26 @@ class App extends React.Component<unknown, IAppState> {
     }
 
     try {
-      const txnsToSign = await scenario(chain, address);
+      let arg : number | null = null;
+      const App_this = this;
+      const argRequired = scenario.argRequired;
+      if (argRequired != null) {
+          arg = await new Promise((resolve : (value: number | PromiseLike<number | null> | null) => void,
+                                   reject : (reason?: any) => void) => {
+              // open modal
+              this.toggleModal();
+        
+              // toggle pending request indicator
+              App_this.setState({ requestArg: {
+                  text : argRequired,
+                  resolve
+                }});
+          });
+          this.toggleModal();
+          this.setState({ requestArg: null });
+      }
+
+      const txnsToSign = await scenario.action(chain, address, arg);
 
       // open modal
       this.toggleModal();
@@ -487,6 +524,9 @@ class App extends React.Component<unknown, IAppState> {
       pendingRequest,
       pendingSubmissions,
       result,
+      zanAsset,
+      zazzanAppAssets,
+      requestArg
     } = this.state;
     return (
       <SLayout>
@@ -499,7 +539,7 @@ class App extends React.Component<unknown, IAppState> {
             chainUpdate={this.chainUpdate}
           />
           <SContent>
-            {!address && !assets.length ? (
+            {!address && (!assets.length || zanAsset == null || !zazzanAppAssets.length) ? (
               <SLanding center>
                 <h3>{`Algorand WalletConnect v${process.env.REACT_APP_VERSION} Demo`}</h3>
                 <SButtonContainer>
@@ -510,6 +550,11 @@ class App extends React.Component<unknown, IAppState> {
               </SLanding>
             ) : (
               <SBalances>
+                {
+                    zanAsset != null ? (
+                            <ZANCirculatingSupply asset={zanAsset} appAssets={zazzanAppAssets} chain={chain}/>
+                        ) : (<></>)  // How to make this tidier?
+                }
                 <h3>Balances</h3>
                 {!fetching ? (
                   <AccountAssets assets={assets} />
@@ -542,6 +587,20 @@ class App extends React.Component<unknown, IAppState> {
                 <Loader />
                 <SModalParagraph>{"Approve or reject request using your wallet"}</SModalParagraph>
               </SContainer>
+            </SModalContainer>
+          ) : requestArg != null ? (
+            <SModalContainer>
+              <SModalTitle>{"Please enter "+(requestArg != null ? requestArg.text : "")}</SModalTitle>
+              <div><SModalInput id="myarg" type="text"/></div>
+              <SModalButton
+                onClick={() => {
+                    const elt = document.getElementById("myarg") as HTMLInputElement;
+                    const text = elt == null ? "" : elt.value;
+                    requestArg.resolve(text == null ? 0 : parseFloat(text));
+                }}
+              >
+                {"Continue"}
+              </SModalButton>
             </SModalContainer>
           ) : result ? (
             <SModalContainer>

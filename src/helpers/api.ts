@@ -72,6 +72,32 @@ export async function apiGetAccountAssets(
   return assets;
 }
 
+export async function apiGetAssetByID(
+  chain: ChainType,
+  aid: number,
+): Promise<Record<string, any>> {
+  const client = clientForChain(chain);
+
+  const asset = await client
+    .getAssetByID(aid)
+    .setIntDecoding(algosdk.IntDecoding.BIGINT)
+    .do();
+  return asset;
+}
+
+export async function apiGetApplicationByID(
+  chain: ChainType,
+  aid: number,
+): Promise<Record<string, any>> {
+  const client = clientForChain(chain);
+
+  const asset = await client
+    .getApplicationByID(aid)
+    // .setIntDecoding(algosdk.IntDecoding.BIGINT)
+    .do();
+  return asset;
+}
+
 export async function apiGetTxnParams(chain: ChainType): Promise<algosdk.SuggestedParams> {
   const params = await clientForChain(chain)
     .getTransactionParams()

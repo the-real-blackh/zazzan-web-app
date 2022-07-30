@@ -1,5 +1,5 @@
 import algosdk from "algosdk";
-import { apiGetTxnParams, ChainType } from "./helpers/api";
+import { apiGetTxnParams, apiGetApplicationByID, ChainType } from "./helpers/api";
 
 const testAccounts = [
   algosdk.mnemonicToSecretKey(
@@ -34,9 +34,12 @@ export interface IScenarioTxn {
 
 export type ScenarioReturnType = IScenarioTxn[][];
 
-export type Scenario = (chain: ChainType, address: string) => Promise<ScenarioReturnType>;
+export class Scenario {
+  public argRequired : string | null;
+  public action : (chain: ChainType, address: string, amount: number | null) => Promise<ScenarioReturnType>;
+}
 
-function getAssetIndex(chain: ChainType): number {
+function getUSDCIndex(chain: ChainType): number {
   if (chain === ChainType.MainNet) {
     // MainNet USDC
     return 31566704;
@@ -47,9 +50,24 @@ function getAssetIndex(chain: ChainType): number {
     return 10458941;
   }
 
-  throw new Error(`Asset not defined for chain ${chain}`);
+  throw new Error(`USDC asset not defined for chain ${chain}`);
 }
 
+export function getZANIndex(chain: ChainType): number {
+  if (chain === ChainType.MainNet) {
+    // MainNet USDC
+    return 101545427;  // TO DO
+  }
+
+  if (chain === ChainType.TestNet) {
+    // TestNet ZAN
+    return 101545427;
+  }
+
+  throw new Error(`ZAN asset not defined for chain ${chain}`);
+}
+
+/*
 function getAssetReserve(chain: ChainType): string {
   if (chain === ChainType.MainNet) {
     return "2UEQTE5QDNXPI7M3TU44G6SYKLFWLPQO7EBZM7K7MHMQQMFI4QJPLHQFHM";
@@ -61,19 +79,34 @@ function getAssetReserve(chain: ChainType): string {
 
   throw new Error(`Asset reserve not defined for chain ${chain}`);
 }
+*/
 
-function getAppIndex(chain: ChainType): number {
+function getZazzanAppIndex(chain: ChainType): number {
   if (chain === ChainType.MainNet) {
-    return 305162725;
+    return 101543557;  // TO DO
   }
 
   if (chain === ChainType.TestNet) {
-    return 22314999;
+    return 101543557;
   }
 
   throw new Error(`App not defined for chain ${chain}`);
 }
 
+export function getZazzanAppAddress(chain: ChainType): string {
+  if (chain === ChainType.MainNet) {
+    return "NYH3MFDKHDKFDFM66GKN7EBF4UJRQ52GELWIJZX2VOH6NRTFPYYI7OMNGU";  // TO DO
+  }
+
+  if (chain === ChainType.TestNet) {
+    return "NYH3MFDKHDKFDFM66GKN7EBF4UJRQ52GELWIJZX2VOH6NRTFPYYI7OMNGU";
+  }
+
+  throw new Error(`App not defined for chain ${chain}`);
+}
+
+
+/*
 const singlePayTxn: Scenario = async (
   chain: ChainType,
   address: string,
@@ -96,38 +129,44 @@ const singlePayTxn: Scenario = async (
   ];
   return [txnsToSign];
 };
+*/
 
-const singleAssetOptInTxn: Scenario = async (
-  chain: ChainType,
-  address: string,
-): Promise<ScenarioReturnType> => {
-  const suggestedParams = await apiGetTxnParams(chain);
-  const assetIndex = getAssetIndex(chain);
+function singleAssetOptInTxn(getAssetIndex : (chain : ChainType) => number, assetName : string) : Scenario {
+    return { argRequired : null, action :
+        async (
+          chain: ChainType,
+          address: string
+        ): Promise<ScenarioReturnType> => {
+          const suggestedParams = await apiGetTxnParams(chain);
+          const assetIndex = getAssetIndex(chain);
+        
+          const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+            from: address,
+            to: address,
+            amount: 0,
+            assetIndex,
+            note: new Uint8Array(Buffer.from("example note value")),
+            suggestedParams,
+          });
+        
+          const txnsToSign = [
+            {
+              txn,
+              message: "This transaction opts you into the "+assetName+" asset if you have not already opted in.",
+            },
+          ];
+          return [txnsToSign];
+        }
+    };
+}
 
-  const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from: address,
-    to: address,
-    amount: 0,
-    assetIndex,
-    note: new Uint8Array(Buffer.from("example note value")),
-    suggestedParams,
-  });
-
-  const txnsToSign = [
-    {
-      txn,
-      message: "This transaction opts you into the USDC asset if you have not already opted in.",
-    },
-  ];
-  return [txnsToSign];
-};
-
+/*
 const singleAssetTransferTxn: Scenario = async (
   chain: ChainType,
   address: string,
 ): Promise<ScenarioReturnType> => {
   const suggestedParams = await apiGetTxnParams(chain);
-  const assetIndex = getAssetIndex(chain);
+  const assetIndex = getUSDCIndex(chain);
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
@@ -141,13 +180,15 @@ const singleAssetTransferTxn: Scenario = async (
   const txnsToSign = [{ txn, message: "This transaction will send 1 USDC to yourself." }];
   return [txnsToSign];
 };
+*/
 
+/*
 const singleAssetCloseTxn: Scenario = async (
   chain: ChainType,
   address: string,
 ): Promise<ScenarioReturnType> => {
   const suggestedParams = await apiGetTxnParams(chain);
-  const assetIndex = getAssetIndex(chain);
+  const assetIndex = getUSDCIndex(chain);
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     from: address,
@@ -168,7 +209,9 @@ const singleAssetCloseTxn: Scenario = async (
   ];
   return [txnsToSign];
 };
+*/
 
+/*
 const singleAppOptIn: Scenario = async (
   chain: ChainType,
   address: string,
@@ -188,7 +231,9 @@ const singleAppOptIn: Scenario = async (
   const txnsToSign = [{ txn, message: "This transaction will opt you into a test app." }];
   return [txnsToSign];
 };
+*/
 
+/*
 const singleAppCall: Scenario = async (
   chain: ChainType,
   address: string,
@@ -208,14 +253,114 @@ const singleAppCall: Scenario = async (
   const txnsToSign = [{ txn, message: "This transaction will invoke an app call on a test app." }];
   return [txnsToSign];
 };
+*/
 
+const singleUSDCtoZAN: Scenario =  { argRequired : "USDC amount", action : async (
+  chain: ChainType,
+  address: string,
+  amount: number
+): Promise<ScenarioReturnType> => {
+  const params = await apiGetTxnParams(chain);
+
+  const zazzanIndex = getZazzanAppIndex(chain);
+  const zazzanAddress = getZazzanAppAddress(chain);
+  const ZANIndex = getZANIndex(chain);
+  const USDCIndex = getUSDCIndex(chain);
+
+  const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: zazzanAddress,
+    amount: amount * 1000000,
+    assetIndex: USDCIndex,
+    // note: new Uint8Array(Buffer.from("")),
+    suggestedParams: params
+  });
+
+  const assets = [ZANIndex, USDCIndex];
+
+  const txn2 = algosdk.makeApplicationNoOpTxnFromObject({
+    from: address,
+    appIndex: zazzanIndex,
+    foreignAssets: assets,
+    //  note: new Uint8Array(Buffer.from("")),
+    appArgs: [new Uint8Array(Buffer.from("toZAN"))],
+    suggestedParams: params,
+  });
+
+  /* const txgroup = */ algosdk.assignGroupID([txn1, txn2]);
+
+  console.log("fas = " + txn2.toByte() );
+
+  const txnsToSign = [
+      { txn: txn1, message: "Transfer USDC to Zazzan App" },
+      { txn: txn2, message: "Call toZAN" },
+    ];
+  return [txnsToSign];
+}};
+
+const singleZANtoUSDC: Scenario =  { argRequired : "ZAN amount", action : async (
+  chain: ChainType,
+  address: string,
+  amount: number
+): Promise<ScenarioReturnType> => {
+  const params = await apiGetTxnParams(chain);
+
+  const zazzanIndex = getZazzanAppIndex(chain);
+  const zazzanAddress = getZazzanAppAddress(chain);
+  const ZANIndex = getZANIndex(chain);
+  const USDCIndex = getUSDCIndex(chain);
+
+  const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: zazzanAddress,
+    amount: amount * 1000000,
+    assetIndex: ZANIndex,
+    // note: new Uint8Array(Buffer.from("")),
+    suggestedParams: params
+  });
+
+  const assets = [ZANIndex, USDCIndex];
+
+  const app = await apiGetApplicationByID(chain, zazzanIndex);
+  const entries = app.params['global-state'].filter((o: any) => o.key === "YWRtRnVuZA==");
+  const adminFund64 = entries[0].value.bytes;
+  const raw = window.atob(adminFund64);
+  const rawLength = raw.length;
+  const array = new Uint8Array(new ArrayBuffer(rawLength));
+  for(let i = 0; i < rawLength; i++) {
+    array[i] = raw.charCodeAt(i);
+  }
+  const adminFund = algosdk.encodeAddress(array);
+
+  const txn2 = algosdk.makeApplicationNoOpTxnFromObject({
+    from: address,
+    appIndex: zazzanIndex,
+    foreignAssets: assets,
+    accounts: [adminFund],
+    //  note: new Uint8Array(Buffer.from("")),
+    appArgs: [new Uint8Array(Buffer.from("toFiat"))],
+    suggestedParams: params,
+  });
+
+  /* const txgroup = */ algosdk.assignGroupID([txn1, txn2]);
+
+  console.log("fas = " + txn2.toByte() );
+
+  const txnsToSign = [
+      { txn: txn1, message: "Transfer USDC to Zazzan App" },
+      { txn: txn2, message: "Call toZAN" },
+    ];
+  return [txnsToSign];
+}};
+
+/*
 const singleAppCloseOut: Scenario = async (
   chain: ChainType,
   address: string,
 ): Promise<ScenarioReturnType> => {
   const suggestedParams = await apiGetTxnParams(chain);
 
-  const appIndex = getAppIndex(chain);
+  const appIndex = getZazzanAppIndex(chain);
 
   const txn = algosdk.makeApplicationCloseOutTxnFromObject({
     from: address,
@@ -228,14 +373,17 @@ const singleAppCloseOut: Scenario = async (
   const txnsToSign = [{ txn, message: "This transaction will opt you out of the test app." }];
   return [txnsToSign];
 };
+*/
 
+/*
 const singleAppClearState: Scenario = async (
   chain: ChainType,
   address: string,
+  amount: number | null
 ): Promise<ScenarioReturnType> => {
   const suggestedParams = await apiGetTxnParams(chain);
 
-  const appIndex = getAppIndex(chain);
+  const appIndex = getZazzanAppIndex(chain);
 
   const txn = algosdk.makeApplicationClearStateTxnFromObject({
     from: address,
@@ -250,16 +398,24 @@ const singleAppClearState: Scenario = async (
   ];
   return [txnsToSign];
 };
+*/
 
 export const scenarios: Array<{ name: string; scenario: Scenario }> = [
+  /*
   {
     name: "1. Sign pay txn",
     scenario: singlePayTxn,
   },
+  */
   {
-    name: "2. Sign asset opt-in txn",
-    scenario: singleAssetOptInTxn,
+    name: "Opt-in to ZAN asset",
+    scenario: singleAssetOptInTxn(getZANIndex, "ZAN"),
   },
+  {
+    name: "Opt-in to USDC asset",
+    scenario: singleAssetOptInTxn(getUSDCIndex, "USDC"),
+  },
+  /*
   {
     name: "3. Sign asset transfer txn",
     scenario: singleAssetTransferTxn,
@@ -283,5 +439,14 @@ export const scenarios: Array<{ name: string; scenario: Scenario }> = [
   {
     name: "8. Sign app clear state txn",
     scenario: singleAppClearState,
+  },
+  */
+  {
+    name: "Convert USDC to ZAN",
+    scenario: singleUSDCtoZAN,
+  },
+  {
+    name: "Convert ZAN to USDC",
+    scenario: singleZANtoUSDC,
   },
 ];
