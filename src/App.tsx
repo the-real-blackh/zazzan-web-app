@@ -95,7 +95,7 @@ const SModalParagraph = styled.p`
 const SBalances = styled(SLanding as any)`
   height: 100%;
   & h3 {
-    padding-top: 30px;
+    padding-top: 10px;
   }
 `;
 
@@ -135,6 +135,17 @@ const STestButton = styled(Button as any)`
   width: 100%;
   max-width: 175px;
   margin: 12px;
+`;
+
+const SFooter = styled.div`
+  margin-top: -1px;
+  margin-bottom: 1px;
+  width: 100%;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
 `;
 
 interface IResult {
@@ -556,14 +567,6 @@ class App extends React.Component<unknown, IAppState> {
               </SLanding>
             ) : (
               <SBalances>
-                {
-                    zanAsset != null ? (
-                          <>
-                            <ZANCirculatingSupply asset={zanAsset} appAssets={zazzanAppAssets} chain={chain}/>
-                            <ZazzanAdminFund asset={zanAsset} adminFundAssets={zazzanAdminFundAssets} chain={chain}/>
-                          </>
-                        ) : (<></>)  // How to make this tidier?
-                }
                 <h3>Balances</h3>
                 {!fetching ? (
                   <AccountAssets assets={assets} />
@@ -584,6 +587,14 @@ class App extends React.Component<unknown, IAppState> {
                     ))}
                   </STestButtonContainer>
                 </Column>
+                {
+                   zanAsset != null && (
+                        <SFooter>
+                          <ZANCirculatingSupply asset={zanAsset} appAssets={zazzanAppAssets} chain={chain}/>
+                          <ZazzanAdminFund asset={zanAsset} adminFundAssets={zazzanAdminFundAssets} chain={chain}/>
+                        </SFooter>
+                      )
+                }
               </SBalances>
             )}
           </SContent>

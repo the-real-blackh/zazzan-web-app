@@ -8,7 +8,7 @@ import { IAssetData } from "../helpers/types";
 
 const SAssetRow = styled.div`
   width: 100%;
-  padding: 10px;
+  padding: 5px;
   display: flex;
   justify-content: space-between;
 `;

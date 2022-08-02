@@ -2,7 +2,7 @@ import * as React from "react";
 import styled from "styled-components";
 import * as PropTypes from "prop-types";
 import Blockie from "./Blockie";
-import { ellipseAddress } from "../helpers/utilities";
+// import { ellipseAddress } from "../helpers/utilities";
 import { transitions } from "../styles";
 import { ChainType } from "src/helpers/api";
 
@@ -21,7 +21,7 @@ const SActiveAccount = styled.div`
   display: flex;
   align-items: center;
   position: relative;
-  font-weight: 500;
+  font-weight: 400;
 `;
 
 const SActiveChain = styled(SActiveAccount as any)`
@@ -48,7 +48,7 @@ interface IHeaderStyle {
 
 const SAddress = styled.p<IHeaderStyle>`
   transition: ${transitions.base};
-  font-weight: bold;
+  //font-weight: bold;
   margin: ${({ connected }) => (connected ? "-2px auto 0.7em" : "0")};
 `;
 
@@ -98,7 +98,7 @@ const Header = (props: IHeaderProps) => {
       {connected && (
         <SActiveChain>
           <p>
-            {`Connected to `}
+            {`Chain `}
             <select
               onChange={event => props.chainUpdate(stringToChainType(event.target.value))}
               value={props.chain}
@@ -112,7 +112,7 @@ const Header = (props: IHeaderProps) => {
       {address && (
         <SActiveAccount>
           <SBlockie address={address} />
-          <SAddress connected={connected}>{ellipseAddress(address)}</SAddress>
+          <SAddress connected={connected}>{address}</SAddress>
           <SDisconnect connected={connected} onClick={killSession}>
             {"Disconnect"}
           </SDisconnect>

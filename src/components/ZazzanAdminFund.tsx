@@ -3,6 +3,10 @@ import { formatBigNumWithDecimals } from "../helpers/utilities";
 import { IAssetData } from "../helpers/types";
 import { getZANIndex } from "../scenarios";
 import { ChainType } from "../helpers/api";
+import styled from "styled-components";
+
+const SSpan = styled.span`
+`;
 
 const ZazzanAdminFund = (props: { asset: Record<string, any>, adminFundAssets: IAssetData[], chain: ChainType }) => {
   const { asset, adminFundAssets, chain } = props;
@@ -13,9 +17,9 @@ const ZazzanAdminFund = (props: { asset: Record<string, any>, adminFundAssets: I
   const zanDecimals = Number(asset.params.decimals);
 
   return (
-      <div>ZAN admin fund balance:&nbsp;
+      <SSpan>admin fund balance:&nbsp;
           {`${formatBigNumWithDecimals(adminFundBalance, zanDecimals)} ${asset.params["unit-name"] || "units"}`}
-      </div>
+      </SSpan>
     )
 }
 
